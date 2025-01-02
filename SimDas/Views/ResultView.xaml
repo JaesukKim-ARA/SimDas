@@ -1,0 +1,234 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="SimDas.Views.ResultView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ScottPlot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+             xmlns:vm="clr-namespace:SimDas.ViewModels"
+             xmlns:Converters="clr-namespace:SimDas.Views.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type={x:Type vm:ResultViewModel}}">
+
+    <UserControl.Resources>
+        <Converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <Converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Converters:HalfSizeConverter x:Key="HalfSizeConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 도구 모음 -->
+        <StackPanel Grid.Row="0" 
+                  Orientation="Horizontal"
+                  Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+            <!-- CSV 내보내기 -->
+            <Button Margin="5" 
+                    Padding="5,2"
+                    Command="{Binding ExportToCsvCommand}"
+                    IsEnabled="{Binding HasResults}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/csv.png" 
+                           Width="16" Height="16" 
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="Export CSV" 
+                             Margin="5,0,0,0" 
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <!-- 클립보드 복사 -->
+            <Button Margin="5" 
+                    Padding="5,2"
+                    Command="{Binding CopyToClipboardCommand}"
+                    IsEnabled="{Binding HasResults}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/copy.png" 
+                           Width="16" Height="16" 
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="Copy to Clipboard" 
+                             Margin="5,0,0,0" 
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <!-- 그래프 저장 -->
+            <Button Margin="5" 
+                    Padding="5,2"
+                    Command="{Binding SavePlotCommand}"
+                    IsEnabled="{Binding HasResults}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/chart.png" 
+                           Width="16" Height="16" 
+                           RenderOptions.BitmapScalingMode="HighQuality" OpacityMask="Black"/>
+                    <TextBlock Text="Save Graphs" 
+                             Margin="5,0,0,0" 
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+            <!-- 초기화 -->
+            <Button Margin="5" 
+                    Padding="5,2"
+                    Command="{Binding ClearCommand}"
+                    IsEnabled="{Binding HasResults}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/refresh.png" 
+                           Width="16" Height="16" 
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="Clear" 
+                             Margin="5,0,0,0" 
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>                
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- States Plot -->
+            <ContentControl x:Name="StatesPlot"
+                            Grid.Row="0"
+                            Grid.ColumnSpan="2"
+                            Margin="5"
+                            MinHeight="200"
+                            Content="{Binding StatesPlotControl}"/>
+
+            <!-- 선택된 시간 표시 -->
+            <TextBox x:Name="SelectedTime"
+                Grid.Row="1" Grid.Column="0"
+                Text="{Binding SelectedTime, Mode=TwoWay, StringFormat=F3, UpdateSourceTrigger=Default}"
+                     PreviewTextInput="TextBox_NumbericInput"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                Background="#FFD6D6D6"
+                Width="36"
+                Margin="2,0"/>
+
+            <!-- Plot Time Slider -->
+            <Slider x:Name="TimeSlider"
+                Grid.Row="1" Grid.Column="1"
+                Height="25"
+                Margin="0,0,10,0"
+                Minimum="{Binding MinTime}"
+                Maximum="{Binding MaxTime}"
+                Value="{Binding SelectedTime}"
+                IsEnabled="{Binding HasResults}"
+                IsMoveToPointEnabled="True"
+                VerticalAlignment="Center"
+                TickFrequency="{Binding SliderTickFrequency}"
+                TickPlacement="BottomRight"
+                AutoToolTipPlacement="TopLeft"
+                AutoToolTipPrecision="3"
+            />
+
+            <!-- Derivatives Plot -->
+            <ContentControl x:Name="DerivativesPlot"
+                            Grid.Row="2"
+                            Grid.ColumnSpan="2"
+                            Margin="5"
+                            MinHeight="200"
+                            Content="{Binding DerivativesPlotControl}"
+            />
+        </Grid>
+        <!-- Plot Splitter -->
+        <GridSplitter x:Name="PlotSplitter"
+            Grid.Row="2"
+            Height="3"
+            HorizontalAlignment="Stretch"
+            Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+            ShowsPreview="True"
+        />
+
+        <!-- Log Panel -->
+        <Grid x:Name="LogPanel"
+            Grid.Row="3"
+            Margin="5,2"
+            Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- 표시 형식 선택 -->
+            <TextBlock x:Name="SelcetDisPlayFormat"
+                Grid.Column="0" Grid.Row="0"
+                Text="Display Format: "
+                VerticalAlignment="Center"
+                Margin="5,0"
+            />
+            <ComboBox x:Name="DiplayFormatDropdown"
+                Grid.Column="1" Grid.Row="0"
+                Width="100"
+                Margin="5,2"
+                SelectedIndex="{Binding DisplayFormat}">
+                <ComboBoxItem Content="General"/>
+                <ComboBoxItem Content="Exponential"/>
+                <ComboBoxItem Content="Fixed-Point"/>
+            </ComboBox>
+
+            <!-- Log View -->
+            <Border x:Name="LogView"
+                Grid.Row="2"
+                Grid.ColumnSpan="3"
+                BorderThickness="1" 
+                BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                Margin="5,0,5,5">
+                <ScrollViewer x:Name="LogScrollviewer"
+                    HorizontalScrollBarVisibility="Auto" 
+                    VerticalScrollBarVisibility="Auto">
+                    <TextBox x:Name="LogTextBox"
+                        Text="{Binding LogContent, Mode=OneWay}"
+                        IsReadOnly="True"
+                        FontFamily="Consolas"
+                        FontSize="12"
+                        Background="White"
+                        BorderThickness="0"
+                        Padding="5"
+                    />
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- No Results Overlay -->
+        <Border x:Name="NoResultsOverlay" 
+                Grid.Row="0" 
+                Grid.RowSpan="8"
+                Background="#80FFFFFF"
+                Visibility="{Binding HasResults, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+            <StackPanel x:Name="NoResultStackPanel"
+                VerticalAlignment="Center" 
+                HorizontalAlignment="Center">
+                <Image x:Name="NoResultImage"
+                    Source="/Views/Resources/no-data.png" 
+                    Opacity="0.5"
+                    MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}"
+                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}" 
+                />
+                <TextBlock x:Name="NoResultTextBlock"
+                    Text="Any results yet"
+                    FontSize="16"
+                    HorizontalAlignment="Center"
+                    Margin="0,10,0,0"
+                    Opacity="0.5"
+                    Foreground="#666666"
+                />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

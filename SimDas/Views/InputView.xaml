@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="SimDas.Views.InputView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:SimDas.ViewModels"
+             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Time Settings -->
+        <Grid Grid.Row="0" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="100"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="0" 
+                   Content="Start Time:" 
+                   VerticalAlignment="Center"/>
+            <xctk:DoubleUpDown Grid.Column="1"
+                          Minimum="0"
+                          Maximum="{Binding EndTime}"
+                          Value="{Binding StartTime}"
+                          Increment="0.1"
+                          Watermark="0.0"
+                          FormatString="F2"/>
+
+            <Label Grid.Column="2" 
+                   Content="End Time:" 
+                   Margin="10,0,0,0"
+                   VerticalAlignment="Center"/>
+            <xctk:DoubleUpDown Grid.Column="3"
+                          Minimum="{Binding StartTime}"
+                          Maximum="1000"
+                          Value="{Binding EndTime}"
+                          Increment="0.1"
+                          Watermark="10.0"
+                          FormatString="F2"/>
+        </Grid>
+
+        <!-- Equations -->
+        <Label Grid.Row="1" 
+               Content="Equations (der(x) for derivatives):"
+               FontWeight="Bold"/>
+        <TextBox Grid.Row="2"
+                 Text="{Binding EquationInput, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 AcceptsTab="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 FontFamily="Consolas"/>
+
+        <!-- Parameters -->
+        <Label Grid.Row="3" 
+               Content="Parameters (name=value; ...):"
+               FontWeight="Bold"/>
+        <TextBox Grid.Row="4"
+                 Text="{Binding ParameterInput, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 FontFamily="Consolas"/>
+
+        <!-- Initial Values -->
+        <Label Grid.Row="5" 
+               Content="Initial Values (name=value; ...):"
+               FontWeight="Bold"/>
+        <TextBox Grid.Row="6"
+                 Text="{Binding InitialValueInput, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 FontFamily="Consolas"/>
+    </Grid>
+</UserControl>

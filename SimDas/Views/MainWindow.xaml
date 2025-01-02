@@ -1,0 +1,207 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Window x:Class="SimDas.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:SimDas.Views"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        Title="SimDas - Differential Algebraic Equation Solver" 
+        Height="1000" Width="1200"
+        MinHeight="600" MinWidth="800">
+
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Tool Bar -->
+        <ToolBar Grid.Row="0">
+            <!-- Solve Button -->
+            <Button Command="{Binding SolveCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/play.png" Width="16" Height="16">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
+                                        <Setter Property="Opacity" Value="0.1"/>
+                                    </DataTrigger>
+                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <TextBlock Text="Solve" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <!-- Pause Button -->
+            <Button Command="{Binding PauseCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/pause.png" Width="16" Height="16">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
+                                        <Setter Property="Opacity" Value="0.1"/>
+                                    </DataTrigger>
+                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <TextBlock Text="Pause" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <!-- Stop Button -->
+            <Button Command="{Binding StopCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/stop.png" Width="16" Height="16">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
+                                        <Setter Property="Opacity" Value="0.1"/>
+                                    </DataTrigger>
+                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <TextBlock Text="Stop" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Separator/>
+            <!-- Save Button -->
+            <Button Command="{Binding SaveResultsCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/save.png" Width="16" Height="16">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
+                                        <Setter Property="Opacity" Value="0.1"/>
+                                    </DataTrigger>
+                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <TextBlock Text="Save Results" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <!-- Clear Button -->
+            <Button Command="{Binding InputClearCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/clear.png" Width="16" Height="16">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Style.Triggers>
+                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
+                                        <Setter Property="Opacity" Value="0.1"/>
+                                    </DataTrigger>
+                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
+                                    <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                                        <Setter Property="Opacity" Value="1.0"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <TextBlock Text="Clear" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+        </ToolBar>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="200*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="200*"/>
+            </Grid.ColumnDefinitions>
+
+
+            <!-- Left Panel - Logs -->
+            <Grid Grid.Column="0">
+                <views:LogView DataContext="{Binding LogViewModel}"/>
+            </Grid>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" 
+                         Width="5" 
+                         HorizontalAlignment="Center" 
+                         VerticalAlignment="Stretch" 
+                         Background="LightGray"/>
+
+            <!-- Middle Panel - Input and Settings -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <views:InputView Grid.Row="0" 
+                                DataContext="{Binding InputViewModel}"/>
+
+                <GridSplitter Grid.Row="1" 
+                             Height="5" 
+                             HorizontalAlignment="Stretch" 
+                             Background="LightGray"/>
+
+                <views:SolverSettingsView Grid.Row="2" 
+                                         DataContext="{Binding SolverSettingsViewModel}"/>
+            </Grid>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="3" 
+                         Width="5" 
+                         HorizontalAlignment="Center" 
+                         VerticalAlignment="Stretch" 
+                         Background="LightGray"/>
+
+            <!-- Right Panel - Results -->
+            <views:ResultView Grid.Column="4" 
+                            DataContext="{Binding ResultViewModel}"/>
+        </Grid>
+
+        <!-- Status Bar -->
+            <StatusBar Grid.Row="2">
+                <StatusBarItem>
+                    <ProgressBar Width="100" 
+                        Height="15" 
+                        Value="{Binding Progress, Mode=OneWay}"/>
+                </StatusBarItem>
+                <Separator/>
+                <StatusBarItem>
+                    <TextBlock Text="{Binding StatusMessage}"/>
+                </StatusBarItem>
+                <StatusBarItem>
+                    <TextBlock Text="{Binding Progress, StringFormat={}{0:F1}%}"/>
+                </StatusBarItem>
+            </StatusBar>
+    </Grid>
+</Window>

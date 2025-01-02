@@ -1,0 +1,157 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="SimDas.Views.SolverSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:SimDas.ViewModels"
+             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:Converters="clr-namespace:SimDas.Views.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type={x:Type viewModels:SolverSettingsViewModel}}">
+
+    <UserControl.Resources>
+        <Converters:SolverDescriptionConverter x:Key="SolverDescriptionConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <GroupBox Grid.Row="0" Header="Basic Settings">
+            <Grid Margin="5">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30"/>
+                    <RowDefinition Height="30"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100*"/>
+                    <ColumnDefinition Width="350*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Solver Description -->
+                <ScrollViewer Grid.Row="0" Grid.Column="2" Margin="5,0" Grid.RowSpan="3">
+                    <TextBlock TextWrapping="Wrap">
+                        <Run FontWeight="Bold" Text="Current Solver Description:"/>
+                        <LineBreak/>
+                        <Run Text="{Binding SelectedSolverType, Converter={StaticResource SolverDescriptionConverter}, Mode=OneWay}"/>  
+                    </TextBlock>
+                </ScrollViewer>
+
+                <!-- Solver Type -->
+                <Label Grid.Column="0" 
+                       Content="Solver:" 
+                       VerticalAlignment="Center" Grid.RowSpan="1" Grid.ColumnSpan="1" Margin="0,0,0,0"/>
+                <ComboBox Grid.Row="0" Grid.Column="0"
+                          ItemsSource="{Binding AvailableSolvers}"
+                          SelectedItem="{Binding SelectedSolverType}"
+                          Margin="5,5,5,5" Grid.ColumnSpan="1"/>
+
+                <!-- Intervals -->
+                <Label Grid.Row="1" Grid.Column="0" 
+                       Content="Intervals:"
+                       VerticalAlignment="Center" HorizontalAlignment="Left" Grid.ColumnSpan="1" Margin="0,0,0,0"/>
+                <xctk:DoubleUpDown Grid.Row="1" Grid.Column="0"
+                              Minimum="10"
+                              Maximum="1000000"
+                              Value="{Binding Intervals}"
+                              Increment="1"
+                              IsEnabled="{Binding IntervalsEnabled}"
+                              Margin="5,5,5,5" Grid.ColumnSpan="1"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Advanced Settings -->
+        <Expander Grid.Row="1" Header="Advanced Settings" 
+                  IsExpanded="False" Margin="0,5">
+            <Grid Margin="5">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Relative Tolerance -->
+                <Label Grid.Row="0" Grid.Column="0" 
+                       Content="Relative Tolerance:"
+                       VerticalAlignment="Center"/>
+                <xctk:DoubleUpDown Grid.Row="0" Grid.Column="1"
+                              Value="{Binding RelativeTolerance}"
+                              Minimum="1e-15"
+                              Maximum="1e-3"
+                              Increment="1e-6"
+                              FormatString="F10"
+                              Margin="5"/>
+
+                <!-- Absolute Tolerance -->
+                <Label Grid.Row="1" Grid.Column="0" 
+                       Content="Absolute Tolerance:"
+                       VerticalAlignment="Center"/>
+                <xctk:DoubleUpDown Grid.Row="1" Grid.Column="1"
+                              Value="{Binding AbsoluteTolerance}"
+                              Minimum="1e-15"
+                              Maximum="1e-3"
+                              Increment="1e-8"
+                              FormatString="F10"
+                              Margin="5"/>
+
+                <!-- Max Order -->
+                <Label Grid.Row="2" Grid.Column="0" 
+                       Content="Max Order:"
+                       VerticalAlignment="Center"/>
+                <xctk:DoubleUpDown Grid.Row="2" Grid.Column="1"
+                              Value="{Binding MaxOrder}"
+                              Minimum="1"
+                              Maximum="5"
+                              Increment="1"
+                              Margin="5"/>
+
+                <!-- Max Newton Iterations -->
+                <Label Grid.Row="3" Grid.Column="0" 
+                       Content="Max Newton Iterations:"
+                       VerticalAlignment="Center"/>
+                <xctk:DoubleUpDown Grid.Row="3" Grid.Column="1"
+                              Value="{Binding MaxNewtonIterations}"
+                              Minimum="1"
+                              Maximum="100"
+                              Increment="1"
+                              Margin="5"/>
+
+                <!-- Initial Step Size -->
+                <Label Grid.Row="4" Grid.Column="0" 
+                       Content="Initial Step Size:"
+                       VerticalAlignment="Center"/>
+                <xctk:DoubleUpDown Grid.Row="4" Grid.Column="1"
+                              Value="{Binding InitialStepSize}"
+                              Minimum="1e-10"
+                              Maximum="1e-2"
+                              Increment="1e-4"
+                              FormatString="F10"
+                              Margin="5"/>
+            </Grid>
+        </Expander>
+
+        <!-- Help Text -->
+        <TextBlock Grid.Row="2" 
+                   TextWrapping="Wrap" 
+                   Margin="5,10">
+            <Run FontWeight="Bold" Text="Help:"/>
+            <LineBreak/>
+            <Run Text="• Steady solvers (Explicit Euler, Implicit Euler, RK4) require intervals setting"/>
+            <LineBreak/>
+            <Run Text="• DASSL is adaptive and manages its own step size"/>
+            <LineBreak/>
+            <Run Text="• Advanced settings are only available for DASSL solver"/>
+        </TextBlock>
+    </Grid>
+</UserControl>
