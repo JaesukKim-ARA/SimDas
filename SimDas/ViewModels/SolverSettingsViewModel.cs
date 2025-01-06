@@ -14,19 +14,11 @@ namespace SimDas.ViewModels
         private readonly IDialogService _dialogService;
         private SolverType _selectedSolverType;
         private int _intervals = 1000;
-        private bool _isStaticSolver;
 
         public SolverType SelectedSolverType
         {
             get => _selectedSolverType;
-            set
-            {
-                if (SetProperty(ref _selectedSolverType, value))
-                {
-                    IsFixedSolver = value != SolverType.DASSL;
-                    RaisePropertyChanged(nameof(IntervalsEnabled));
-                }
-            }
+            set => SetProperty(ref _selectedSolverType, value);
         }
 
         public int Intervals
@@ -34,14 +26,6 @@ namespace SimDas.ViewModels
             get => _intervals;
             set => SetProperty(ref _intervals, value);
         }
-
-        public bool IsFixedSolver
-        {
-            get => _isStaticSolver;
-            private set => SetProperty(ref _isStaticSolver, value);
-        }
-
-        public bool IntervalsEnabled => IsFixedSolver;
 
         public Array AvailableSolvers => Enum.GetValues(typeof(SolverType));
 

@@ -52,7 +52,7 @@ namespace SimDas.Parser
             .Select(v => v.Key)
             .ToList();
 
-        public (DifferentialEquation equation, int dimension) Parse(List<string> equations)
+        public (ODESystem equation, int dimension) Parse(List<string> equations)
         {
             // 초기화
             _variableTypes.Clear();
@@ -230,7 +230,7 @@ namespace SimDas.Parser
             return orderedEquations;
         }
 
-        private DifferentialEquation CreateEquationSystem(string[] orderedEquations)
+        private ODESystem CreateEquationSystem(string[] orderedEquations)
         {
             // 각 방정식을 토큰화
             var tokenizedEquations = orderedEquations

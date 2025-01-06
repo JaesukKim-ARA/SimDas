@@ -21,10 +21,17 @@ namespace SimDas.Parser
 
         public void SetValidVariables(List<string> variables)
         {
+            // 기존 변수들을 모두 제거
             _validVariableNames.Clear();
+            _variables.Clear();
+
             foreach (var variable in variables)
             {
                 _validVariableNames.Add(variable);
+                if (!_parameters.ContainsKey(variable))
+                {
+                    _variables[variable] = _variables.Count;
+                }
             }
         }
 
@@ -40,8 +47,8 @@ namespace SimDas.Parser
         public void AddVariable(string name)
         {
             if (!_parameters.ContainsKey(name) &&
-                _validVariableNames.Contains(name) &&
-                !_variables.ContainsKey(name))
+            _validVariableNames.Contains(name) &&
+            !_variables.ContainsKey(name))
             {
                 _variables[name] = _variables.Count;
             }

@@ -56,7 +56,7 @@ namespace SimDas.Models.Common
         }
     }
 
-    public delegate double[] DifferentialEquation(double t, double[] y);
+    public delegate double[] ODESystem(double t, double[] y);
     public delegate double[] DAESystem(double t, double[] y, double[] yprime);
 
     public class ErrorAnalysis

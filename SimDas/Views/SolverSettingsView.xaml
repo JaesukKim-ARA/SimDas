@@ -60,7 +60,6 @@
                               Maximum="1000000"
                               Value="{Binding Intervals}"
                               Increment="1"
-                              IsEnabled="{Binding IntervalsEnabled}"
                               Margin="5,5,5,5" Grid.ColumnSpan="1"/>
             </Grid>
         </GroupBox>

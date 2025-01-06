@@ -37,7 +37,7 @@
                     <Image Source="/Views/Resources/csv.png" 
                            Width="16" Height="16" 
                            RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Export CSV" 
+                    <TextBlock Text="Export to CSV" 
                              Margin="5,0,0,0" 
                              VerticalAlignment="Center"/>
                 </StackPanel>
@@ -79,7 +79,7 @@
                     <Image Source="/Views/Resources/refresh.png" 
                            Width="16" Height="16" 
                            RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Clear" 
+                    <TextBlock Text="Clear Results" 
                              Margin="5,0,0,0" 
                              VerticalAlignment="Center"/>
                 </StackPanel>
@@ -95,7 +95,24 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            
+
+            <!-- States Plot 위에 추가 -->
+            <ItemsControl ItemsSource="{Binding CurrentValues}"
+              Grid.Row="0" Grid.Column="1" Panel.ZIndex="1000"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top"
+              Margin="0,10,10,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="1" Foreground="{Binding Item3}"/>
+                            <TextBlock Text=": "/>
+                            <TextBlock Text="{Binding value}" Foreground="{Binding color}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
             <!-- States Plot -->
             <ContentControl x:Name="StatesPlot"
                             Grid.Row="0"
@@ -108,12 +125,19 @@
             <TextBox x:Name="SelectedTime"
                 Grid.Row="1" Grid.Column="0"
                 Text="{Binding SelectedTime, Mode=TwoWay, StringFormat=F3, UpdateSourceTrigger=Default}"
-                     PreviewTextInput="TextBox_NumbericInput"
+                PreviewTextInput="TextBox_NumbericInput"
+                TextAlignment="Center"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Left"
                 Background="#FFD6D6D6"
-                Width="36"
-                Margin="2,0"/>
+                BorderBrush="Black"
+                Width="45" Margin="5, 0, 25, 0" />
+
+            <CheckBox x:Name="TimeIndicatorVisibility"
+                Grid.Row="1" Grid.Column="0" Width="15" Height="15" Margin="0,0,5,0"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Right"
+                IsChecked="{Binding ShowTimeIndicator}"/>
 
             <!-- Plot Time Slider -->
             <Slider x:Name="TimeSlider"
@@ -126,6 +150,8 @@
                 IsEnabled="{Binding HasResults}"
                 IsMoveToPointEnabled="True"
                 VerticalAlignment="Center"
+                SmallChange="0.001"
+                LargeChange="1"
                 TickFrequency="{Binding SliderTickFrequency}"
                 TickPlacement="BottomRight"
                 AutoToolTipPlacement="TopLeft"
@@ -221,8 +247,8 @@
                     MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}" 
                 />
                 <TextBlock x:Name="NoResultTextBlock"
-                    Text="Any results yet"
-                    FontSize="16"
+                    Text="No results yet"
+                    FontSize="32"
                     HorizontalAlignment="Center"
                     Margin="0,10,0,0"
                     Opacity="0.5"

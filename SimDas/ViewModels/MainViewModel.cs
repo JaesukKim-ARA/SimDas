@@ -15,6 +15,7 @@ namespace SimDas.ViewModels
         private readonly ILoggingService _loggingService;
         private ISolver _currentSolver;
         private bool _isSolving;
+        private bool _isPaused;
         private double _progress;
         private string _statusMessage;
         private CancellationTokenSource _cancellationTokenSource;
@@ -34,6 +35,12 @@ namespace SimDas.ViewModels
         {
             get => _isSolving;
             private set => SetProperty(ref _isSolving, value);
+        }
+
+        public bool IsPaused
+        {
+            get => _isPaused;
+            private set => SetProperty(ref _isPaused, value);
         }
 
         public double Progress
@@ -96,26 +103,14 @@ namespace SimDas.ViewModels
                 var parameters = InputViewModel.GetParameters();
                 var initialState = InputViewModel.GetInitialState();
 
-                if (_currentSolver.Name == "DASSL")
-                {
-                    (var daeSystem, var dimension) = InputViewModel.ParseEquations();
-                    _currentSolver.SetDAESystem((DAESystem)daeSystem, dimension);
-                }
-                else
-                {
-                    var (diffEquation, dimension) = InputViewModel.ParseEquations();
-                    _currentSolver.SetDifferentialEquation((DifferentialEquation)diffEquation, dimension);
-                }
+                (var daeSystem, var dimension) = InputViewModel.ParseEquations();
+                _currentSolver.SetDAESystem((DAESystem)daeSystem, dimension);
 
                 _currentSolver.InitialState = initialState;
                 _currentSolver.Initialize(parameters);
                 _currentSolver.StartTime = InputViewModel.StartTime;
                 _currentSolver.EndTime = InputViewModel.EndTime;
-
-                if (_currentSolver.IsSteady)
-                {
-                    _currentSolver.Intervals = SolverSettingsViewModel.Intervals;
-                }
+                _currentSolver.Intervals = SolverSettingsViewModel.Intervals;
 
                 _loggingService.Info($"Starting solution with {_currentSolver.Name}");
 
@@ -123,7 +118,6 @@ namespace SimDas.ViewModels
 
                 if (solution != null)
                 {
-                    await ResultViewModel.UpdatePlotsAsync(solution);
                     ResultViewModel.DisplayResults(solution, InputViewModel.GetVariableNames());
                     _loggingService.Info("Solution completed successfully");
                 }
@@ -153,12 +147,49 @@ namespace SimDas.ViewModels
 
         private void ExecutePause()
         {
-            // Pause/Resume logic will be implemented here
+            try
+            {
+                if (_currentSolver == null)
+                    return;
+
+                if (_currentSolver.IsPaused)
+                {
+                    _currentSolver.Resume();
+                    IsPaused = false;
+                    StatusMessage = "Resuming...";
+                    _loggingService.Info("Solution resuming");
+                }
+                else
+                {
+                    _currentSolver.Pause();
+                    IsPaused = true;
+                    StatusMessage = "Paused";
+                    _loggingService.Info("Solution paused");
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error($"Error in pause/resume: {ex.Message}");
+                _dialogService.ShowError(ex.Message);
+            }
         }
 
         private void ExecuteStop()
         {
-            _cancellationTokenSource?.Cancel();
+            if (_currentSolver != null)
+            {
+                // 일시정지 상태인 경우 먼저 Resume 처리
+                if (_currentSolver.IsPaused)
+                {
+                    _currentSolver.Resume();
+                    IsPaused = false;
+                }
+
+                // 취소 처리
+                _cancellationTokenSource?.Cancel();
+                StatusMessage = "Stopped";
+                _loggingService.Info("Solution stopped by user");
+            }
         }
 
         private bool CanExecuteSaveResults() => ResultViewModel.HasResults && !IsSolving;
@@ -190,6 +221,7 @@ namespace SimDas.ViewModels
                 InputViewModel.Clear();
                 ResultViewModel.ClearCommand.Execute(null);
                 _loggingService.Clear();
+                LogViewModel.ClearLogsCommand.Execute(null);
                 _loggingService.Info("All data cleared");
             }
         }

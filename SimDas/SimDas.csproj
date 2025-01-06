@@ -212,5 +212,8 @@
   <ItemGroup>
     <Resource Include="Views\Resources\no-data.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Views\Resources\resume.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

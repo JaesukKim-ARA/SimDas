@@ -29,7 +29,16 @@ namespace SimDas.ViewModels
         public string EquationInput
         {
             get => _equationInput;
-            set => SetProperty(ref _equationInput, value, ValidateInputs);
+            set
+            {
+
+                if (SetProperty(ref _equationInput, value, ValidateInputs))
+                {
+                    // 방정식이 변경되면 변수 목록 초기화
+                    UpdateValidVariables();
+                    ValidateInputs();
+                }
+            }
         }
 
         public string ParameterInput
@@ -70,6 +79,89 @@ namespace SimDas.ViewModels
             SetExampleEquations();
         }
 
+        private void UpdateValidVariables()
+        {
+            try
+            {
+                // 새로운 방정식 파싱
+                var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                             .Select(eq => eq.Trim())
+                                             .Where(eq => !string.IsNullOrEmpty(eq))
+                                             .ToList();
+
+                // 방정식에서 유효 변수 추출
+                var variables = new HashSet<string>();
+                foreach (var equation in equations)
+                {
+                    var (leftSide, _) = SplitEquation(equation);
+                    var varName = ParseVariableName(leftSide);
+                    if (!string.IsNullOrEmpty(varName))
+                    {
+                        variables.Add(varName);
+                    }
+                }
+
+                // 현재 초기값 파싱
+                var currentInitialValues = new Dictionary<string, double>();
+                var initialValuePairs = InitialValueInput.Split(';')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s));
+
+                foreach (var pair in initialValuePairs)
+                {
+                    var parts = pair.Split('=');
+                    if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double value))
+                    {
+                        currentInitialValues[parts[0].Trim()] = value;
+                    }
+                }
+
+                // 새로운 초기값 문자열 생성
+                var newInitialValues = new List<string>();
+                foreach (var variable in variables)
+                {
+                    if (currentInitialValues.TryGetValue(variable, out double value))
+                    {
+                        newInitialValues.Add($"{variable}={value}");
+                    }
+                    else
+                    {
+                        newInitialValues.Add($"{variable}=0"); // 새로운 변수는 기본값 0으로 설정
+                    }
+                }
+
+                // 초기값 업데이트
+                InitialValueInput = string.Join("; ", newInitialValues);
+
+                // ExpressionParser 업데이트
+                _equationParser.GetExpressionParser().SetValidVariables(variables.ToList());
+
+                _loggingService.Debug($"Valid variables updated: {string.Join(", ", variables)}");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error($"Failed to update valid variables: {ex.Message}");
+            }
+        }
+
+        private (string leftSide, string rightSide) SplitEquation(string equation)
+        {
+            var parts = equation.Split('=');
+            if (parts.Length != 2)
+                throw new Exception($"Invalid equation format: {equation}");
+            return (parts[0].Trim(), parts[1].Trim());
+        }
+
+        private string ParseVariableName(string leftSide)
+        {
+            // der(x) 형태 처리
+            if (leftSide.StartsWith("der(") && leftSide.EndsWith(")"))
+            {
+                return leftSide.Substring(4, leftSide.Length - 5);
+            }
+            return leftSide;
+        }
+
         private void SetExampleEquations()
         {
             // Mass-Spring-Damper example
@@ -80,20 +172,26 @@ namespace SimDas.ViewModels
             EndTime = 10;
         }
 
+
+
         private void ValidateInputs()
         {
             try
             {
                 IsValid = false;
 
-                // Validate time range
                 if (EndTime <= StartTime)
                 {
                     _loggingService.Warning("End time must be greater than start time");
                     return;
                 }
 
-                // Parse equations
+                var parameters = ParseParameters();
+                if (parameters == null)
+                    return;
+
+                _equationParser.SetParameters(parameters);
+
                 var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(eq => eq.Trim())
                     .Where(eq => !string.IsNullOrEmpty(eq))
@@ -105,49 +203,29 @@ namespace SimDas.ViewModels
                     return;
                 }
 
-                // Parse parameters
-                var parameters = ParseParameters();
-                if (parameters == null)
+                // 시스템 파싱 시도
+                try
+                {
+                    int dimension;
+                    if (SolverType == SolverType.DASSL)
+                    {
+                        (_, dimension) = _equationParser.ParseDAE(equations);
+                    }
+                    else
+                    {
+                        (_, dimension) = _equationParser.Parse(equations);
+                    }
+
+                    if (dimension > 0)
+                    {
+                        IsValid = true;
+                        _loggingService.Debug("Input validation successful");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _loggingService.Error($"Equation parsing error: {ex.Message}");
                     return;
-
-                // Parse initial conditions
-                var initialConditions = InitialValueInput
-                    .Split(';')
-                    .Select(s => s.Trim())
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .ToList();
-
-                if (!initialConditions.Any())
-                {
-                    _loggingService.Warning("No initial conditions provided");
-                    return;
-                }
-
-                // Set valid variables from initial conditions
-                var validVariables = initialConditions
-                    .Select(cond => cond.Split('=')[0].Trim())
-                    .ToList();
-
-                _equationParser.GetExpressionParser().SetValidVariables(validVariables);
-                _equationParser.SetParameters(parameters);
-
-                // Try parsing the system
-
-                int dimension;
-
-                if (SolverType == SolverType.DASSL)
-                {
-                    (_, dimension) = _equationParser.ParseDAE(equations);
-                }
-                else
-                {
-                    (_, dimension) = _equationParser.Parse(equations);
-                }
-
-                if (dimension > 0)
-                {
-                    IsValid = true;
-                    _loggingService.Debug("Input validation successful");
                 }
             }
             catch (Exception ex)
@@ -156,7 +234,6 @@ namespace SimDas.ViewModels
                 IsValid = false;
             }
         }
-
 
         private Dictionary<string, double> ParseParameters()
         {
@@ -197,13 +274,72 @@ namespace SimDas.ViewModels
 
         public double[] GetInitialState()
         {
-            var initialConditions = InitialValueInput
-                .Split(';')
-                .Select(s => s.Trim())
-                .Where(s => !string.IsNullOrEmpty(s))
-                .ToList();
+            try
+            {
+                // 방정식을 기반으로 변수 동기화
+                SyncExpressionParserVariables();
 
-            return _equationParser.ParseInitialConditions(initialConditions);
+                // 초기 조건 파싱
+                var initialConditions = InitialValueInput
+                    .Split(';')
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+
+                var parsedInitialConditions = _equationParser.ParseInitialConditions(initialConditions);
+
+                // 방정식에서 사용된 모든 변수가 초기 조건에 포함되었는지 확인
+                var validVariables = _equationParser.GetExpressionParser().GetVariables();
+                foreach (var variable in validVariables.Keys)
+                {
+                    if (!initialConditions.Any(cond => cond.StartsWith($"{variable}=")))
+                    {
+                        throw new Exception($"Missing initial condition for variable: {variable}");
+                    }
+                }
+
+                return parsedInitialConditions;
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error($"Error parsing initial state: {ex.Message}");
+                throw;
+            }
+        }
+
+        private void SyncExpressionParserVariables()
+        {
+            try
+            {
+                // 방정식에서 변수 추출
+                var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                             .Select(eq => eq.Trim())
+                                             .Where(eq => !string.IsNullOrEmpty(eq))
+                                             .ToList();
+
+                var variables = new HashSet<string>();
+                foreach (var equation in equations)
+                {
+                    var tokens = _equationParser.GetExpressionParser().Tokenize(equation);
+                    foreach (var token in tokens)
+                    {
+                        if (token.Type == TokenType.Variable)
+                        {
+                            variables.Add(token.Value);
+                        }
+                    }
+                }
+
+                // ExpressionParser의 변수 동기화
+                _equationParser.GetExpressionParser().SetValidVariables(variables.ToList());
+
+                _loggingService.Debug($"ExpressionParser variables synchronized: {string.Join(", ", variables)}");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error($"Error syncing variables: {ex.Message}");
+                throw;
+            }
         }
 
         public Dictionary<string, double> GetParameters() => ParseParameters();
@@ -227,9 +363,7 @@ namespace SimDas.ViewModels
                     .Where(eq => !string.IsNullOrEmpty(eq))
                     .ToList();
 
-            return SolverType == SolverType.DASSL
-            ? _equationParser.ParseDAE(equations)
-            : _equationParser.Parse(equations);
+            return _equationParser.ParseDAE(equations);
         }
 
         public void Clear()

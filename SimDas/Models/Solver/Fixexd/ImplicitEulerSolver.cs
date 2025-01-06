@@ -12,7 +12,7 @@ namespace SimDas.Models.Solver.Fixed
         private const int MAX_ITERATIONS = 100;
         private const double TOLERANCE = 1e-6;
 
-        public ImplicitEulerSolver() : base("Implicit Euler", true)
+        public ImplicitEulerSolver() : base("Implicit Euler")
         {
         }
 
@@ -24,29 +24,35 @@ namespace SimDas.Models.Solver.Fixed
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
         {
             ValidateInputs();
+            ValidateEquationSetup(); // DAE 또는 ODE 설정 확인
 
             var solution = new Solution();
             double dt = (EndTime - StartTime) / Intervals;
             double[] currentState = (double[])InitialState.Clone();
+            double[] currentDerivatives = new double[Dimension];
             double currentTime = StartTime;
 
             while (currentTime <= EndTime)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                double[] derivatives = DifferentialEquation(currentTime, currentState);
-                solution.LogStep(currentTime, currentState, derivatives);
+                // 일시정지 체크
+                if (IsPaused)
+                {
+                    await _pauseCompletionSource.Task;
+                    if (cancellationToken.IsCancellationRequested)
+                        throw new OperationCanceledException();
+                }
 
-                if (currentTime >= EndTime) break;
-
-                // Newton-Raphson 방법으로 다음 상태 계산
-                double[] nextState = await SolveNextStateAsync(currentState, currentTime, dt, cancellationToken);
-                currentState = nextState;
+                currentState = await SolveNextStateDAEAsync(currentState, currentDerivatives, currentTime, dt, cancellationToken);
                 currentTime += dt;
 
-                // 진행률 업데이트
+                solution.LogStep(currentTime, currentState, currentDerivatives);
+
                 RaiseProgressChanged(currentTime, EndTime,
                     $"Time: {currentTime:F3}/{EndTime:F3}, Step size: {dt:E3}");
+
+                await Task.Yield();
             }
 
             return solution;
@@ -102,6 +108,34 @@ namespace SimDas.Models.Solver.Fixed
             return nextState;
         }
 
+        private async Task<double[]> SolveNextStateDAEAsync(
+    double[] currentState, double[] currentDerivatives, double t, double dt, CancellationToken cancellationToken)
+        {
+            int n = currentState.Length;
+            double[] nextState = (double[])currentState.Clone();
+            double[] nextDerivatives = (double[])currentDerivatives.Clone();
+
+            for (int iter = 0; iter < MAX_ITERATIONS; iter++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                double[] residuals = DAESystem(t + dt, nextState, nextDerivatives);
+
+                if (NormL2(residuals) < TOLERANCE)
+                    break;
+
+                double[,] jacobian = await CalculateJacobianAsync(nextState, nextDerivatives, t + dt, dt, cancellationToken);
+                double[] delta = SolveLinearSystem(jacobian, residuals);
+
+                for (int i = 0; i < n; i++)
+                {
+                    nextState[i] -= delta[i];
+                    nextDerivatives[i] = (nextState[i] - currentState[i]) / dt; // DAE를 위한 도함수 갱신
+                }
+            }
+
+            return nextState;
+        }
+
         private async Task<double[,]> CalculateJacobianAsync(double[] state, double time, double dt,
             CancellationToken cancellationToken)
         {
@@ -129,6 +163,41 @@ namespace SimDas.Models.Solver.Fixed
             }
 
             return J;
+        }
+
+        private async Task<double[,]> CalculateJacobianAsync(
+    double[] state, double[] derivatives, double time, double dt, CancellationToken cancellationToken)
+        {
+            int n = state.Length;
+            double[,] jacobian = new double[n, n];
+            double epsilon = Math.Sqrt(TOLERANCE);
+
+            double[] baseResiduals = DAESystem(time, state, derivatives); // 현재 잔차 계산
+
+            for (int i = 0; i < n; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // ∂F/∂y: 상태 변화를 통한 Jacobian 요소 계산
+                double[] perturbedState = (double[])state.Clone();
+                perturbedState[i] += epsilon;
+                double[] perturbedResidualsState = DAESystem(time, perturbedState, derivatives);
+
+                // ∂F/∂y': 도함수 변화를 통한 Jacobian 요소 계산
+                double[] perturbedDerivatives = (double[])derivatives.Clone();
+                perturbedDerivatives[i] += epsilon / dt;
+                double[] perturbedResidualsDerivatives = DAESystem(time, state, perturbedDerivatives);
+
+                for (int j = 0; j < n; j++)
+                {
+                    jacobian[j, i] = (perturbedResidualsState[j] - baseResiduals[j]) / epsilon // ∂F/∂y
+                                   + (perturbedResidualsDerivatives[j] - baseResiduals[j]) / (epsilon / dt); // ∂F/∂y'
+                }
+
+                await Task.Yield(); // 비동기 작업에서 CPU 양보
+            }
+
+            return jacobian;
         }
 
         private double NormL2(double[] v)

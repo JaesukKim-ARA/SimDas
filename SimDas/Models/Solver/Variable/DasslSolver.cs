@@ -28,7 +28,7 @@ namespace SimDas.Models.Solver.Variable
         private double[] _nominalValues;
         private readonly double[][] _bdfCoeffsCache;
 
-        public DasslSolver() : base("DASSL", false)
+        public DasslSolver() : base("DASSL")
         {
             _bdfCoeffsCache = new double[][]
             {
@@ -134,6 +134,16 @@ namespace SimDas.Models.Solver.Variable
             {
                 while (currentTime < EndTime && !cancellationToken.IsCancellationRequested)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // 일시정지 체크
+                    if (IsPaused)
+                    {
+                        await _pauseCompletionSource.Task;
+                        if (cancellationToken.IsCancellationRequested)
+                            throw new OperationCanceledException();
+                    }
+
                     if (consecutiveFailures > MAX_CONSECUTIVE_FAILURES)
                     {
                         throw new Exception("Too many consecutive failures");

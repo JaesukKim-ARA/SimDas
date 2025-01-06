@@ -8,26 +8,32 @@ namespace SimDas.Models.Solver.Base
 {
     public abstract class SolverBase : ISolver
     {
+        private Solution _currentSolution;
+        private bool _isPaused;
+        protected TaskCompletionSource<bool> _pauseCompletionSource;
+
         public string Name { get; protected set; }
-        public bool IsSteady { get; protected set; }
         public int Intervals { get; set; }
         public double StartTime { get; set; }
         public double EndTime { get; set; }
         public double[] InitialState { get; set; }
+        public bool IsPaused => _isPaused;
+        public Solution CurrentSolution => _currentSolution;
 
         public event EventHandler<ProgressEventArgs> OnProgressChanged;
 
-        protected DifferentialEquation DifferentialEquation { get; private set; }
+        protected ODESystem DifferentialEquation { get; private set; }
         protected DAESystem DAESystem { get; private set; }
         protected int Dimension { get; private set; }
         protected Dictionary<string, double> Parameters { get; private set; }
         protected bool IsDisposed { get; private set; }
 
-        protected SolverBase(string name, bool isSteady)
+        protected SolverBase(string name)
         {
             Name = name;
-            IsSteady = isSteady;
             IsDisposed = false;
+            _currentSolution = new Solution();
+            _pauseCompletionSource = new TaskCompletionSource<bool>();
         }
 
         public virtual void Initialize(Dictionary<string, double> parameters)
@@ -59,35 +65,66 @@ namespace SimDas.Models.Solver.Base
             if (EndTime <= StartTime)
                 throw new ArgumentException("End time must be greater than start time");
 
-            if (IsSteady && Intervals <= 0)
+            if (Intervals <= 0)
                 throw new ArgumentException("Number of intervals must be positive for steady solvers");
         }
 
-         public virtual void SetDifferentialEquation(DifferentialEquation equation, int dimension)
-    {
-        if (!IsSteady)
-            throw new InvalidOperationException("DifferentialEquation cannot be set for non-steady solvers.");
-        
-        DifferentialEquation = equation;
-        Dimension = dimension;
-    }
+        public virtual void SetODESystem(ODESystem equation, int dimension)
+        {
+            DifferentialEquation = equation;
+            Dimension = dimension;
+        }
 
-    public virtual void SetDAESystem(DAESystem daeSystem, int dimension)
-    {
-        if (IsSteady)
-            throw new InvalidOperationException("DAESystem cannot be set for steady solvers.");
-        
-        DAESystem = daeSystem;
-        Dimension = dimension;
-    }
+        public virtual void SetDAESystem(DAESystem daeSystem, int dimension)
+        {
+            DAESystem = daeSystem;
+            Dimension = dimension;
+        }
 
-    protected void ValidateEquationSetup()
-    {
-        if (IsSteady && DifferentialEquation == null)
-            throw new InvalidOperationException("Steady solvers require a DifferentialEquation.");
-        
-        if (!IsSteady && DAESystem == null)
-            throw new InvalidOperationException("Non-steady solvers require a DAESystem.");
-    }
+        public virtual void Pause()
+        {
+            if (!_isPaused)
+            {
+                _isPaused = true;
+                _pauseCompletionSource = new TaskCompletionSource<bool>();
+            }
+        }
+
+        public virtual void Resume()
+        {
+            if (_isPaused)
+            {
+                _isPaused = false;
+                _pauseCompletionSource.SetResult(true);
+            }
+        }
+
+        protected virtual void ValidateEquationSetup()
+        {
+            if (DifferentialEquation == null && DAESystem == null)
+            {
+                throw new InvalidOperationException("Solver requires a DifferentialEquation or DAESystem.");
+            }
+        }
+
+        protected double[] AddVectors(double[] v1, double[] v2)
+        {
+            double[] result = new double[v1.Length];
+            for (int i = 0; i < v1.Length; i++)
+            {
+                result[i] = v1[i] + v2[i];
+            }
+            return result;
+        }
+
+        protected double[] MultiplyVector(double[] v, double scalar)
+        {
+            double[] result = new double[v.Length];
+            for (int i = 0; i < v.Length; i++)
+            {
+                result[i] = v[i] * scalar;
+            }
+            return result;
+        }
     }
 }

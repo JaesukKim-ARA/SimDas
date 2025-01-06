@@ -7,8 +7,9 @@
         xmlns:views="clr-namespace:SimDas.Views"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         Title="SimDas - Differential Algebraic Equation Solver" 
-        Height="1000" Width="1200"
-        MinHeight="600" MinWidth="800">
+        Height="1200" Width="1600"
+        MinHeight="600" MinWidth="800"
+        WindowStartupLocation="CenterScreen">
 
     
     <Grid>
@@ -43,17 +44,16 @@
                 </StackPanel>
             </Button>
             <!-- Pause Button -->
-            <Button Command="{Binding PauseCommand}">
+            <Button Command="{Binding PauseCommand}" Width="70">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/pause.png" Width="16" Height="16">
+                    <Image Source="/Views/Resources/resume.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
-                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
+                                    <!-- 버튼이 비활성화되었을 때 투명도 조정 -->
                                     <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
                                         <Setter Property="Opacity" Value="0.1"/>
                                     </DataTrigger>
-                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
                                     <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
                                         <Setter Property="Opacity" Value="1.0"/>
                                     </DataTrigger>
@@ -61,7 +61,18 @@
                             </Style>
                         </Image.Style>
                     </Image>
-                    <TextBlock Text="Pause" Margin="5,0,0,0"/>
+                    <TextBlock Margin="5,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Pause"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPaused}" Value="True">
+                                        <Setter Property="Text" Value="Resume"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
             </Button>
             <!-- Stop Button -->
@@ -87,18 +98,16 @@
                 </StackPanel>
             </Button>
             <Separator/>
-            <!-- Save Button -->
+            <!-- 
             <Button Command="{Binding SaveResultsCommand}">
                 <StackPanel Orientation="Horizontal">
                     <Image Source="/Views/Resources/save.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
-                                    <!-- IsEnabled가 False일 때 Opacity를 0.1로 설정 -->
                                     <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="False">
                                         <Setter Property="Opacity" Value="0.1"/>
                                     </DataTrigger>
-                                    <!-- IsEnabled가 True일 때 Opacity를 1.0으로 설정 -->
                                     <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
                                         <Setter Property="Opacity" Value="1.0"/>
                                     </DataTrigger>
@@ -109,6 +118,8 @@
                     <TextBlock Text="Save Results" Margin="5,0,0,0"/>
                 </StackPanel>
             </Button>
+            -->
+            
             <!-- Clear Button -->
             <Button Command="{Binding InputClearCommand}">
                 <StackPanel Orientation="Horizontal">
@@ -128,7 +139,7 @@
                             </Style>
                         </Image.Style>
                     </Image>
-                    <TextBlock Text="Clear" Margin="5,0,0,0"/>
+                    <TextBlock Text="Clear All" Margin="5,0,0,0"/>
                 </StackPanel>
             </Button>
         </ToolBar>
