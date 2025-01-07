@@ -40,6 +40,11 @@ namespace SimDas.ViewModels
         private double _conditionNumber;
         private double _stiffnessRatio;
         private ObservableCollection<string> _systemWarnings;
+        private PopupPosition _analysisPopupPosition = new PopupPosition
+        {
+            X = 300, // 초기 X 좌표 (화면 중앙으로 조정)
+            Y = 200  // 초기 Y 좌표
+        };
 
         public WpfPlot StatesPlotControl { get; set; }
         public WpfPlot DerivativesPlotControl { get; set; }
@@ -149,10 +154,19 @@ namespace SimDas.ViewModels
 
         public bool HasWarnings => SystemWarnings?.Any() == true;
 
+        public PopupPosition AnalysisPopupPosition
+        {
+            get => _analysisPopupPosition;
+            set => SetProperty(ref _analysisPopupPosition, value);
+        }
+
         public ICommand ExportToCsvCommand { get; }
         public ICommand CopyToClipboardCommand { get; }
         public ICommand SavePlotCommand { get; }
         public ICommand ClearCommand { get; }
+        public ICommand CloseAnalysisCommand { get; }
+        public ICommand ToggleAnalysisCommand { get; }
+
 
         public ResultViewModel(
             ILoggingService loggingService,
@@ -172,6 +186,10 @@ namespace SimDas.ViewModels
             CopyToClipboardCommand = new RelayCommand(ExecuteCopyToClipboard, () => HasResults);
             SavePlotCommand = new RelayCommand(ExecuteSavePlot, () => HasResults);
             ClearCommand = new RelayCommand(ExecuteClear, () => HasResults);
+            CloseAnalysisCommand = new RelayCommand(() => ShowAnalysis = false);
+            ToggleAnalysisCommand = new RelayCommand(() => ShowAnalysis = !ShowAnalysis);
+
+            _analysisPopupPosition = new PopupPosition();
 
             DisplayFormat = 2;
 
@@ -188,6 +206,11 @@ namespace SimDas.ViewModels
                     GetValues = index => _currentSolution.Derivatives[index]
                 }
             };
+
+            if (Application.Current.MainWindow != null)
+            {
+                Application.Current.MainWindow.Closed += (s, e) => ShowAnalysis = false;
+            }
         }
 
         public void UpdateAnalysis(DAEAnalysis analysis)
@@ -206,17 +229,35 @@ namespace SimDas.ViewModels
                 sb.AppendLine("\nEigenvalues:");
                 foreach (var eigenvalue in analysis.Eigenvalues.Take(5))
                 {
-                    sb.AppendLine($"  {eigenvalue.Real:E3} + {eigenvalue.Imaginary:E3}i");
-                }
-                if (analysis.Eigenvalues.Length > 5)
-                {
-                    sb.AppendLine("  ...");
+                    if (Math.Abs(eigenvalue.Imaginary) < 1e-10)
+                    {
+                        sb.AppendLine($"  {eigenvalue.Real:E3}");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"  {eigenvalue.Real:E3} + {eigenvalue.Imaginary:E3}i");
+                    }
                 }
             }
 
-            SystemAnalysis = sb.ToString();
-            ConditionNumber = analysis.ConditionNumber;
             StiffnessRatio = analysis.StiffnessRatio;
+
+            // Condition Number가 무한대인 경우 처리
+            if (double.IsInfinity(analysis.ConditionNumber))
+            {
+                ConditionNumber = -1; // UI에서 특별히 처리
+            }
+            else
+            {
+                ConditionNumber = analysis.ConditionNumber;
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("Numerical Properties:");
+            sb.AppendLine($"Condition Number: {ConditionNumber:F2}");
+            sb.AppendLine($"Stiffness Ratio: {StiffnessRatio:F2}");
+
+            SystemAnalysis = sb.ToString();
             SystemWarnings = new ObservableCollection<string>(analysis.Warnings);
 
             ShowAnalysis = true;

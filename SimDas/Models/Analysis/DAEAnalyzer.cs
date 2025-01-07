@@ -17,6 +17,7 @@ namespace SimDas.Models.Analysis
         private const double PERTURBATION = 1e-6;
         private const double STIFFNESS_THRESHOLD = 1000.0;
         private readonly IProgress<AnalysisProgress> _progress;
+        private readonly ArrayPool<double> _arrayPool = ArrayPool<double>.Shared;
 
         public DAEAnalyzer(ILoggingService loggingService, IProgress<AnalysisProgress> progress = null)
         {
@@ -146,46 +147,76 @@ namespace SimDas.Models.Analysis
 
         private void IdentifyAlgebraicVariables(DAESystem system, double[] state, double time, DAEAnalysis analysis)
         {
+            // 초기화
+            for (int i = 0; i < state.Length; i++)
+            {
+                analysis.AlgebraicVariables[i] = false;
+            }
+
             double[] derivatives = new double[state.Length];
             double[] baseResiduals = system(time, state, derivatives);
 
+            // 각 방정식에 대해 도함수 의존성 검사
             for (int i = 0; i < state.Length; i++)
             {
-                derivatives[i] += PERTURBATION;
-                double[] perturbedResiduals = system(time, state, derivatives);
-                derivatives[i] -= PERTURBATION;
+                bool isDifferential = false;
+                var testDerivatives = (double[])derivatives.Clone();
 
-                bool isAlgebraic = true;
+                // 도함수 변화에 대한 잔차 변화 검사
+                testDerivatives[i] += PERTURBATION;
+                var perturbedResiduals = system(time, state, testDerivatives);
+
                 for (int j = 0; j < state.Length; j++)
                 {
                     if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
                     {
-                        isAlgebraic = false;
+                        isDifferential = true;
                         break;
                     }
                 }
-                analysis.AlgebraicVariables[i] = isAlgebraic;
+
+                analysis.AlgebraicVariables[i] = !isDifferential;
             }
         }
 
         private async Task IdentifyAlgebraicVariablesAsync(DAESystem system, double[] state, double time, DAEAnalysis analysis)
         {
+            // 초기화: 모든 변수를 미분 변수로 설정
+            for (int i = 0; i < state.Length; i++)
+            {
+                analysis.AlgebraicVariables[i] = false;
+            }
+
+            double[] derivatives = new double[state.Length];
+            double[] baseResiduals = system(time, state, derivatives);
+
             var tasks = new Task[state.Length];
+
             for (int i = 0; i < state.Length; i++)
             {
                 int index = i;  // 클로저를 위한 복사
                 tasks[i] = Task.Run(() =>
                 {
-                    double[] derivatives = new double[state.Length];
-                    double[] baseResiduals = system(time, state, derivatives);
-                    derivatives[index] += PERTURBATION;
-                    double[] perturbedResiduals = system(time, state, derivatives);
+                    bool isDifferential = false;
+                    var testDerivatives = (double[])derivatives.Clone();
 
-                    analysis.AlgebraicVariables[index] = !perturbedResiduals
-                        .Zip(baseResiduals, (p, b) => Math.Abs(p - b))
-                        .Any(diff => diff > PERTURBATION);
+                    // 도함수 변화에 대한 잔차 변화 검사
+                    testDerivatives[index] += PERTURBATION;
+                    var perturbedResiduals = system(time, state, testDerivatives);
+
+                    for (int j = 0; j < state.Length; j++)
+                    {
+                        if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
+                        {
+                            isDifferential = true;
+                            break;
+                        }
+                    }
+
+                    analysis.AlgebraicVariables[index] = !isDifferential;
                 });
             }
+
             await Task.WhenAll(tasks);
         }
 
@@ -200,6 +231,7 @@ namespace SimDas.Models.Analysis
                 bool[] nextAlgebraic = new bool[state.Length];
                 double[] baseResiduals = system(time, state, derivatives);
 
+                bool foundDependency = false;
                 for (int i = 0; i < state.Length; i++)
                 {
                     if (!currentAlgebraic[i]) continue;
@@ -214,12 +246,13 @@ namespace SimDas.Models.Analysis
                         if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
                         {
                             nextAlgebraic[i] = false;
+                            foundDependency = true;
                             break;
                         }
                     }
                 }
 
-                if (!nextAlgebraic.Any(x => x)) break;
+                if (!foundDependency) break;  // 더 이상 의존성이 없으면 현재 인덱스가 DAE 인덱스
                 currentAlgebraic = nextAlgebraic;
                 index++;
             }
@@ -235,8 +268,11 @@ namespace SimDas.Models.Analysis
 
             while (currentAlgebraic.Any(x => x) && index < 4)
             {
+                //cancellationToken.ThrowIfCancellationRequested();
+
                 bool[] nextAlgebraic = new bool[state.Length];
                 double[] baseResiduals = system(time, state, derivatives);
+                bool foundDependency = false;
 
                 var tasks = new List<Task>();
                 for (int i = 0; i < state.Length; i++)
@@ -250,15 +286,22 @@ namespace SimDas.Models.Analysis
                         localState[localI] += PERTURBATION;
                         var perturbedResiduals = system(time, localState, derivatives);
 
-                        nextAlgebraic[localI] = !perturbedResiduals
-                            .Zip(baseResiduals, (p, b) => Math.Abs(p - b))
-                            .Any(diff => diff > PERTURBATION);
+                        nextAlgebraic[localI] = true;
+                        for (int j = 0; j < state.Length; j++)
+                        {
+                            if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
+                            {
+                                nextAlgebraic[localI] = false;
+                                foundDependency = true;
+                                break;
+                            }
+                        }
                     }));
                 }
 
                 await Task.WhenAll(tasks);
 
-                if (!nextAlgebraic.Any(x => x)) break;
+                if (!foundDependency) break;  // 더 이상 의존성이 없으면 현재 인덱스가 DAE 인덱스
                 currentAlgebraic = nextAlgebraic;
                 index++;
             }
@@ -364,19 +407,32 @@ namespace SimDas.Models.Analysis
             var jacobian = new double[n, n];
             double[] baseResiduals = system(time, state, derivatives);
 
+            // 적응형 섭동 크기 사용
+            double eps = Math.Sqrt(PERTURBATION);
+            double baseNorm = CalculateNorm(state);
+            if (baseNorm > 0)
+            {
+                eps *= Math.Max(baseNorm, 1.0);
+            }
+
             for (int i = 0; i < n; i++)
             {
                 var perturbedState = (double[])state.Clone();
-                perturbedState[i] += PERTURBATION;
+                perturbedState[i] += eps;
                 double[] perturbedResiduals = system(time, perturbedState, derivatives);
 
                 for (int j = 0; j < n; j++)
                 {
-                    jacobian[j, i] = (perturbedResiduals[j] - baseResiduals[j]) / PERTURBATION;
+                    jacobian[j, i] = (perturbedResiduals[j] - baseResiduals[j]) / eps;
                 }
             }
 
             return jacobian;
+        }
+
+        private double CalculateNorm(double[] vector)
+        {
+            return Math.Sqrt(vector.Sum(x => x * x));
         }
 
         private async Task<double[,]> CalculateJacobianParallelAsync(
@@ -388,17 +444,23 @@ namespace SimDas.Models.Analysis
         {
             int n = state.Length;
             var jacobian = new double[n, n];
+            double eps = Math.Sqrt(PERTURBATION);
+            double baseNorm = CalculateNorm(state);
+            if (baseNorm > 0)
+            {
+                eps *= Math.Max(baseNorm, 1.0);
+            }
 
             const int MIN_BATCH_SIZE = 4;
             int batchSize = Math.Max(MIN_BATCH_SIZE, n / Environment.ProcessorCount);
             int numBatches = (n + batchSize - 1) / batchSize;
 
-            // 기본 residual 배열 준비
-            double[] baseResiduals = RentArray<double>(n);
+            // 클래스 레벨의 ArrayPool 사용
+            double[] baseResiduals = _arrayPool.Rent(n);
 
             try
             {
-                baseResiduals = system(time, state, derivatives);
+                Array.Copy(system(time, state, derivatives), baseResiduals, n);
                 ReportProgress("Calculating Jacobian", 0, "Starting Jacobian calculation...");
 
                 var tasks = new Task[numBatches];
@@ -406,55 +468,41 @@ namespace SimDas.Models.Analysis
                 {
                     int batchStart = batch * batchSize;
                     int batchEnd = Math.Min(batchStart + batchSize, n);
-                    int batchIndex = batch;  // 클로저를 위한 로컬 변수
+                    int batchIndex = batch;
 
                     tasks[batch] = Task.Run(() =>
                     {
-                        var perturbedState = RentArray<double>(n);
-                        var perturbedDerivatives = RentArray<double>(n);
-                        var tempResiduals = RentArray<double>(n);
+                        // 각 태스크별 배열 할당
+                        double[] perturbedState = _arrayPool.Rent(n);
 
                         try
                         {
                             for (int col = batchStart; col < batchEnd && !cancellationToken.IsCancellationRequested; col++)
                             {
-                                // 진행률 보고 (각 배치의 진행상황)
-                                double batchProgress = (double)(col - batchStart) / (batchEnd - batchStart);
-                                double overallProgress = (batchIndex * batchSize + (col - batchStart)) * 100.0 / n;
-                                ReportProgress("Calculating Jacobian", overallProgress,
-                                    $"Processing batch {batchIndex + 1}/{numBatches} ({overallProgress:F1}%)");
-
                                 Array.Copy(state, perturbedState, n);
-                                Array.Copy(derivatives, perturbedDerivatives, n);
+                                perturbedState[col] += eps;
 
-                                // 상태 변수에 대한 편미분
-                                perturbedState[col] += PERTURBATION;
-                                var statePerturbedResiduals = system(time, perturbedState, derivatives);
-
-                                // 도함수에 대한 편미분
-                                Array.Copy(state, perturbedState, n);
-                                perturbedDerivatives[col] += PERTURBATION;
-                                var derivativePerturbedResiduals = system(time, state, perturbedDerivatives);
+                                var perturbedResiduals = system(time, perturbedState, derivatives);
 
                                 for (int row = 0; row < n; row++)
                                 {
-                                    double dFdy = (statePerturbedResiduals[row] - baseResiduals[row]) / PERTURBATION;
-                                    double dFdyp = (derivativePerturbedResiduals[row] - baseResiduals[row]) / PERTURBATION;
-                                    jacobian[row, col] = dFdy + dFdyp;
+                                    jacobian[row, col] = (perturbedResiduals[row] - baseResiduals[row]) / eps;
                                 }
+
+                                double progress = (double)(col - batchStart) / (batchEnd - batchStart) * 100;
+                                ReportProgress("Calculating Jacobian", progress,
+                                    $"Batch {batchIndex + 1}/{numBatches}: {progress:F1}%");
                             }
                         }
                         finally
                         {
-                            ReturnArray(perturbedState);
-                            ReturnArray(perturbedDerivatives);
-                            ReturnArray(tempResiduals);
+                            // 배열 반환
+                            _arrayPool.Return(perturbedState);
                         }
                     }, cancellationToken);
                 }
 
                 await Task.WhenAll(tasks);
-                ReportProgress("Calculating Jacobian", 100, "Jacobian calculation completed");
             }
             catch (OperationCanceledException)
             {
@@ -468,7 +516,8 @@ namespace SimDas.Models.Analysis
             }
             finally
             {
-                //ReturnArray(baseResiduals);
+                // baseResiduals 반환
+                _arrayPool.Return(baseResiduals);
             }
 
             return jacobian;
@@ -478,17 +527,24 @@ namespace SimDas.Models.Analysis
         {
             try
             {
-                // 2D 배열을 Matrix<double>로 변환
                 var matrixSize = matrix.GetLength(0);
                 var denseMatrix = Matrix<double>.Build.DenseOfArray(matrix);
 
-                // Eigenvalue 계산
-                var evd = denseMatrix.Evd();
+                // 행렬이 특이한지(singular) 확인
+                if (Math.Abs(denseMatrix.Determinant()) < 1e-10)
+                {
+                    _loggingService.Warning("Matrix is near-singular, eigenvalues may be unreliable");
+                }
 
-                // 결과를 Complex32 배열로 변환
-                return evd.EigenValues
-                         .Select(c => new Complex32((float)c.Real, (float)c.Imaginary))
-                         .ToArray();
+                var evd = denseMatrix.Evd();
+                var eigenvalues = evd.EigenValues
+                                    .Select(c => new Complex32((float)c.Real, (float)c.Imaginary))
+                                    .Where(c => !float.IsNaN(c.Real) && !float.IsInfinity(c.Real))
+                                    .ToArray();
+
+                // 결과 로깅
+                _loggingService.Debug($"Calculated {eigenvalues.Length} eigenvalues");
+                return eigenvalues;
             }
             catch (Exception ex)
             {
@@ -504,26 +560,23 @@ namespace SimDas.Models.Analysis
                 var denseMatrix = Matrix<double>.Build.DenseOfArray(matrix);
                 var svd = denseMatrix.Svd();
 
-                // 조건수 = 최대 특이값 / 최소 특이값
-                return svd.ConditionNumber;
+                var maxSingular = svd.S[0];
+                var minSingular = svd.S[svd.S.Count - 1];
+
+                if (Math.Abs(minSingular) < 1e-10)
+                {
+                    _loggingService.Warning("Matrix is near-singular");
+                    return double.PositiveInfinity;
+                }
+
+                var conditionNumber = maxSingular / minSingular;
+                _loggingService.Debug($"Calculated condition number: {conditionNumber}");
+                return conditionNumber;
             }
             catch (Exception ex)
             {
                 _loggingService.Error($"Condition number calculation failed: {ex.Message}");
                 return double.NaN;
-            }
-        }
-
-        private T[] RentArray<T>(int length)
-        {
-            return ArrayPool<T>.Shared.Rent(length);
-        }
-
-        private void ReturnArray<T>(T[] array)
-        {
-            if (array != null)
-            {
-                ArrayPool<T>.Shared.Return(array);
             }
         }
 

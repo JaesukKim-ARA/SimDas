@@ -6,6 +6,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ScottPlot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
              xmlns:vm="clr-namespace:SimDas.ViewModels"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:local="clr-namespace:SimDas.Models.Common"
              xmlns:Converters="clr-namespace:SimDas.Views.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type={x:Type vm:ResultViewModel}}">
@@ -15,306 +17,277 @@
         <Converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Converters:HalfSizeConverter x:Key="HalfSizeConverter"/>
     </UserControl.Resources>
+    <Grid ClipToBounds="False">
+        <Grid x:Name="MainGrid" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- 도구 모음 -->
-        <StackPanel Grid.Row="0" 
-                  Orientation="Horizontal"
-                  Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
-            <!-- CSV 내보내기 -->
-            <Button Margin="5" 
+            <!-- 도구 모음 -->
+            <StackPanel Grid.Row="0" 
+                      Orientation="Horizontal"
+                      Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+                <!-- CSV 내보내기 -->
+                <Button Margin="5" 
+                        Padding="5,2"
+                        Command="{Binding ExportToCsvCommand}"
+                        IsEnabled="{Binding HasResults}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="/Views/Resources/csv.png" 
+                               Width="16" Height="16" 
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="Export to CSV" 
+                                 Margin="5,0,0,0" 
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <!-- 클립보드 복사 -->
+                <Button Margin="5" 
+                        Padding="5,2"
+                        Command="{Binding CopyToClipboardCommand}"
+                        IsEnabled="{Binding HasResults}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="/Views/Resources/copy.png" 
+                               Width="16" Height="16" 
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="Copy to Clipboard" 
+                                 Margin="5,0,0,0" 
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <!-- 그래프 저장 -->
+                <Button Margin="5" 
+                        Padding="5,2"
+                        Command="{Binding SavePlotCommand}"
+                        IsEnabled="{Binding HasResults}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="/Views/Resources/chart.png" 
+                               Width="16" Height="16" 
+                               RenderOptions.BitmapScalingMode="HighQuality" OpacityMask="Black"/>
+                        <TextBlock Text="Save Graphs" 
+                                 Margin="5,0,0,0" 
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <!-- 초기화 -->
+                <Button Margin="5" 
+                        Padding="5,2"
+                        Command="{Binding ClearCommand}"
+                        IsEnabled="{Binding HasResults}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="/Views/Resources/refresh.png" 
+                               Width="16" Height="16" 
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="Clear Results" 
+                                 Margin="5,0,0,0" 
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <!-- 분석 버튼 -->
+                <Button Margin="5" 
                     Padding="5,2"
-                    Command="{Binding ExportToCsvCommand}"
-                    IsEnabled="{Binding HasResults}">
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/csv.png" 
-                           Width="16" Height="16" 
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Export to CSV" 
-                             Margin="5,0,0,0" 
-                             VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-            <!-- 클립보드 복사 -->
-            <Button Margin="5" 
-                    Padding="5,2"
-                    Command="{Binding CopyToClipboardCommand}"
-                    IsEnabled="{Binding HasResults}">
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/copy.png" 
-                           Width="16" Height="16" 
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Copy to Clipboard" 
-                             Margin="5,0,0,0" 
-                             VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-            <!-- 그래프 저장 -->
-            <Button Margin="5" 
-                    Padding="5,2"
-                    Command="{Binding SavePlotCommand}"
-                    IsEnabled="{Binding HasResults}">
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/chart.png" 
-                           Width="16" Height="16" 
-                           RenderOptions.BitmapScalingMode="HighQuality" OpacityMask="Black"/>
-                    <TextBlock Text="Save Graphs" 
-                             Margin="5,0,0,0" 
-                             VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-            <!-- 초기화 -->
-            <Button Margin="5" 
-                    Padding="5,2"
-                    Command="{Binding ClearCommand}"
-                    IsEnabled="{Binding HasResults}">
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/refresh.png" 
-                           Width="16" Height="16" 
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Clear Results" 
-                             Margin="5,0,0,0" 
-                             VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-            <!-- 분석 버튼 -->
-            <Button Margin="5" 
-                Padding="5,2"
-                Command="{Binding ToggleAnalysisCommand}">   
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/show.png" 
-                           Width="16" Height="16" 
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Show Analysis" 
-                                Margin="5,0,0,0" 
-                                VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
-        </StackPanel>
+                    Command="{Binding ToggleAnalysisCommand}">   
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="/Views/Resources/show.png" 
+                               Width="16" Height="16" 
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <TextBlock Text="Show Analysis" 
+                                    Margin="5,0,0,0" 
+                                    VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
 
-        <Popup IsOpen="{Binding ShowAnalysis}"
-               PlacementTarget="{Binding ElementName=MainGrid}"
-               Placement="Center"
-               AllowsTransparency="True">   
-            <Border Background="White"
-            BorderBrush="Gray"
-            BorderThickness="1"
-            Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>                
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-                    <TextBlock Text="System Analysis" 
-                      FontWeight="Bold" 
-                      FontSize="16"
-                      Margin="0,0,0,10"/>
+                <!-- States Plot -->
+                <ContentControl x:Name="StatesPlot"
+                                Grid.Row="0"
+                                Grid.ColumnSpan="2"
+                                Margin="5"
+                                MinHeight="200"
+                                Content="{Binding StatesPlotControl}"/>
 
-                    <ScrollViewer Grid.Row="1" 
-                         MaxHeight="400">
-                        <StackPanel>
-                            <StackPanel Margin="0,5">
-                                <TextBlock FontWeight="Bold" Text="Basic Information"/>
-                                <TextBlock Text="{Binding SystemAnalysis}"/>
-                            </StackPanel>
+                <!-- 선택된 시간 표시 -->
+                <TextBox x:Name="SelectedTime"
+                    Grid.Row="1" Grid.Column="0"
+                    Text="{Binding SelectedTime, Mode=TwoWay, StringFormat=F3, UpdateSourceTrigger=Default}"
+                    PreviewTextInput="TextBox_NumbericInput"
+                    TextAlignment="Center"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    Background="#FFD6D6D6"
+                    BorderBrush="Black"
+                    Width="45" Margin="5, 0, 25, 0" />
 
-                            <StackPanel Margin="0,10,0,5">
-                                <TextBlock FontWeight="Bold" Text="Numerical Properties"/>
-                                <TextBlock>
-                            <Run Text="Condition Number: "/>
-                            <Run Text="{Binding ConditionNumber, StringFormat=E3, Mode=OneWay}"/>
-                                </TextBlock>
-                                <TextBlock>
-                            <Run Text="Stiffness Ratio: "/>
-                            <Run Text="{Binding StiffnessRatio, StringFormat=E3, Mode=OneWay}"/>
-                                </TextBlock>
-                            </StackPanel>
-
-                            <StackPanel Margin="0,10,0,5"
-                              Visibility="{Binding HasWarnings, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <TextBlock FontWeight="Bold" Text="Warnings" Foreground="Red"/>
-                                <ItemsControl ItemsSource="{Binding SystemWarnings}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" Foreground="Red" TextWrapping="Wrap"/>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-
-                    <Button Grid.Row="2"
-                    Content="Close"
-                    Command="{Binding CloseAnalysisCommand}"
+                <CheckBox x:Name="TimeIndicatorVisibility"
+                    Grid.Row="1" Grid.Column="0" Width="15" Height="15" Margin="0,0,5,0"
+                    VerticalAlignment="Center"
                     HorizontalAlignment="Right"
-                    Margin="0,10,0,0"/>
+                    IsChecked="{Binding ShowTimeIndicator}"/>
+
+                <!-- Plot Time Slider -->
+                <Slider x:Name="TimeSlider"
+                    Grid.Row="1" Grid.Column="1"
+                    Height="25"
+                    Margin="0,0,10,0"
+                    Minimum="{Binding MinTime}"
+                    Maximum="{Binding MaxTime}"
+                    Value="{Binding SelectedTime}"
+                    IsEnabled="{Binding HasResults}"
+                    IsMoveToPointEnabled="True"
+                    VerticalAlignment="Center"
+                    SmallChange="0.001"
+                    LargeChange="1"
+                    TickFrequency="{Binding SliderTickFrequency}"
+                    TickPlacement="BottomRight"
+                    AutoToolTipPlacement="TopLeft"
+                    AutoToolTipPrecision="3"
+                />
+
+                <!-- Derivatives Plot -->
+                <ContentControl x:Name="DerivativesPlot"
+                                Grid.Row="2"
+                                Grid.ColumnSpan="2"
+                                Margin="5"
+                                MinHeight="200"
+                                Content="{Binding DerivativesPlotControl}"
+                />
+            </Grid>
+            <!-- Plot Splitter -->
+            <GridSplitter x:Name="PlotSplitter"
+                Grid.Row="2"
+                Height="3"
+                HorizontalAlignment="Stretch"
+                Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                ShowsPreview="True"
+            />
+
+            <!-- Log Panel -->
+            <Grid x:Name="LogPanel"
+                Grid.Row="3"
+                Margin="5,2"
+                Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 표시 형식 선택 -->
+                <TextBlock x:Name="SelcetDisPlayFormat"
+                    Grid.Column="0" Grid.Row="0"
+                    Text="Display Format: "
+                    VerticalAlignment="Center"
+                    Margin="5,0"
+                />
+                <ComboBox x:Name="DiplayFormatDropdown"
+                    Grid.Column="1" Grid.Row="0"
+                    Width="100"
+                    Margin="5,2"
+                    SelectedIndex="{Binding DisplayFormat}">
+                    <ComboBoxItem Content="General"/>
+                    <ComboBoxItem Content="Exponential"/>
+                    <ComboBoxItem Content="Fixed-Point"/>
+                </ComboBox>
+
+                <!-- Log View -->
+                <Border x:Name="LogView"
+                    Grid.Row="2"
+                    Grid.ColumnSpan="3"
+                    BorderThickness="1" 
+                    BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                    Margin="5,0,5,5">
+                    <ScrollViewer x:Name="LogScrollviewer"
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto">
+                        <TextBox x:Name="LogTextBox"
+                            Text="{Binding LogContent, Mode=OneWay}"
+                            IsReadOnly="True"
+                            FontFamily="Consolas"
+                            FontSize="12"
+                            Background="White"
+                            BorderThickness="0"
+                            Padding="5"
+                        />
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+
+            <!-- No Results Overlay -->
+            <Border x:Name="NoResultsOverlay" 
+                    Grid.Row="0" 
+                    Grid.RowSpan="8"
+                    Background="#80FFFFFF"
+                    Visibility="{Binding HasResults, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                <StackPanel x:Name="NoResultStackPanel"
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center">
+                    <Image x:Name="NoResultImage"
+                        Source="/Views/Resources/no-data.png" 
+                        Opacity="0.5"
+                        MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}"
+                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}" 
+                    />
+                    <TextBlock x:Name="NoResultTextBlock"
+                        Text="No results yet"
+                        FontSize="32"
+                        HorizontalAlignment="Center"
+                        Margin="0,10,0,0"
+                        Opacity="0.5"
+                        Foreground="#666666"
+                    />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Popup x:Name="AnalysisPopup" IsOpen="{Binding ShowAnalysis}" Placement="Center"
+       AllowsTransparency="True" StaysOpen="True"
+       HorizontalOffset="{Binding AnalysisPopupPosition.X}"
+       VerticalOffset="{Binding AnalysisPopupPosition.Y}">
+            <Border Background="White" BorderBrush="Black" BorderThickness="1">
+                <Grid>
+                    <!-- 닫기 버튼 -->
+                    <Button Panel.ZIndex="1" Content="X" HorizontalAlignment="Right" VerticalAlignment="Top" 
+                    Width="20" Height="20" Margin="5"
+                    Command="{Binding CloseAnalysisCommand}" />
+                    <!-- 팝업 내용 -->
+                    <StackPanel>
+                        <!-- 제목 부분 -->
+                        <Border Background="#FFDDDDDD" Padding="5">
+                            <TextBlock Text="System Analysis" FontWeight="Bold">
+                        <i:Interaction.Behaviors>
+                            <local:DraggablePopupBehavior ParentPopup="{Binding ElementName=AnalysisPopup}"
+                                                          Position="{Binding AnalysisPopupPosition}" />
+                        </i:Interaction.Behaviors>
+                            </TextBlock>
+                        </Border>
+                        <!-- 내용 부분 -->
+                        <TextBox Text="{Binding SystemAnalysis}" Margin="5"
+                         IsReadOnly="True" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         TextWrapping="Wrap" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </Popup>
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>                
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <!-- States Plot -->
-            <ContentControl x:Name="StatesPlot"
-                            Grid.Row="0"
-                            Grid.ColumnSpan="2"
-                            Margin="5"
-                            MinHeight="200"
-                            Content="{Binding StatesPlotControl}"/>
-
-            <!-- 선택된 시간 표시 -->
-            <TextBox x:Name="SelectedTime"
-                Grid.Row="1" Grid.Column="0"
-                Text="{Binding SelectedTime, Mode=TwoWay, StringFormat=F3, UpdateSourceTrigger=Default}"
-                PreviewTextInput="TextBox_NumbericInput"
-                TextAlignment="Center"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Left"
-                Background="#FFD6D6D6"
-                BorderBrush="Black"
-                Width="45" Margin="5, 0, 25, 0" />
-
-            <CheckBox x:Name="TimeIndicatorVisibility"
-                Grid.Row="1" Grid.Column="0" Width="15" Height="15" Margin="0,0,5,0"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Right"
-                IsChecked="{Binding ShowTimeIndicator}"/>
-
-            <!-- Plot Time Slider -->
-            <Slider x:Name="TimeSlider"
-                Grid.Row="1" Grid.Column="1"
-                Height="25"
-                Margin="0,0,10,0"
-                Minimum="{Binding MinTime}"
-                Maximum="{Binding MaxTime}"
-                Value="{Binding SelectedTime}"
-                IsEnabled="{Binding HasResults}"
-                IsMoveToPointEnabled="True"
-                VerticalAlignment="Center"
-                SmallChange="0.001"
-                LargeChange="1"
-                TickFrequency="{Binding SliderTickFrequency}"
-                TickPlacement="BottomRight"
-                AutoToolTipPlacement="TopLeft"
-                AutoToolTipPrecision="3"
-            />
-
-            <!-- Derivatives Plot -->
-            <ContentControl x:Name="DerivativesPlot"
-                            Grid.Row="2"
-                            Grid.ColumnSpan="2"
-                            Margin="5"
-                            MinHeight="200"
-                            Content="{Binding DerivativesPlotControl}"
-            />
-        </Grid>
-        <!-- Plot Splitter -->
-        <GridSplitter x:Name="PlotSplitter"
-            Grid.Row="2"
-            Height="3"
-            HorizontalAlignment="Stretch"
-            Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
-            ShowsPreview="True"
-        />
-
-        <!-- Log Panel -->
-        <Grid x:Name="LogPanel"
-            Grid.Row="3"
-            Margin="5,2"
-            Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <!-- 표시 형식 선택 -->
-            <TextBlock x:Name="SelcetDisPlayFormat"
-                Grid.Column="0" Grid.Row="0"
-                Text="Display Format: "
-                VerticalAlignment="Center"
-                Margin="5,0"
-            />
-            <ComboBox x:Name="DiplayFormatDropdown"
-                Grid.Column="1" Grid.Row="0"
-                Width="100"
-                Margin="5,2"
-                SelectedIndex="{Binding DisplayFormat}">
-                <ComboBoxItem Content="General"/>
-                <ComboBoxItem Content="Exponential"/>
-                <ComboBoxItem Content="Fixed-Point"/>
-            </ComboBox>
-
-            <!-- Log View -->
-            <Border x:Name="LogView"
-                Grid.Row="2"
-                Grid.ColumnSpan="3"
-                BorderThickness="1" 
-                BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
-                Margin="5,0,5,5">
-                <ScrollViewer x:Name="LogScrollviewer"
-                    HorizontalScrollBarVisibility="Auto" 
-                    VerticalScrollBarVisibility="Auto">
-                    <TextBox x:Name="LogTextBox"
-                        Text="{Binding LogContent, Mode=OneWay}"
-                        IsReadOnly="True"
-                        FontFamily="Consolas"
-                        FontSize="12"
-                        Background="White"
-                        BorderThickness="0"
-                        Padding="5"
-                    />
-                </ScrollViewer>
-            </Border>
-        </Grid>
-
-        <!-- No Results Overlay -->
-        <Border x:Name="NoResultsOverlay" 
-                Grid.Row="0" 
-                Grid.RowSpan="8"
-                Background="#80FFFFFF"
-                Visibility="{Binding HasResults, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
-            <StackPanel x:Name="NoResultStackPanel"
-                VerticalAlignment="Center" 
-                HorizontalAlignment="Center">
-                <Image x:Name="NoResultImage"
-                    Source="/Views/Resources/no-data.png" 
-                    Opacity="0.5"
-                    MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}"
-                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}" 
-                />
-                <TextBlock x:Name="NoResultTextBlock"
-                    Text="No results yet"
-                    FontSize="32"
-                    HorizontalAlignment="Center"
-                    Margin="0,10,0,0"
-                    Opacity="0.5"
-                    Foreground="#666666"
-                />
-            </StackPanel>
-        </Border>
     </Grid>
 </UserControl>

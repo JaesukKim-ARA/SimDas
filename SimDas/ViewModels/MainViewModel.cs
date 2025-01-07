@@ -8,6 +8,7 @@ using System;
 using System.Threading.Tasks;
 using SimDas.Models.Analysis;
 using System.Linq;
+using System.Windows;
 
 namespace SimDas.ViewModels
 {

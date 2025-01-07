@@ -5,6 +5,7 @@ using SimDas.Models.Solver.Fixed;
 using SimDas.Models.Solver.Variable;
 using System;
 using SimDas.Services;
+using System.Linq;
 
 namespace SimDas.ViewModels
 {
@@ -27,7 +28,10 @@ namespace SimDas.ViewModels
             set => SetProperty(ref _intervals, value);
         }
 
-        public Array AvailableSolvers => Enum.GetValues(typeof(SolverType));
+        public Array AvailableSolvers => Enum.GetValues(typeof(SolverType))
+                                             .Cast<SolverType>()
+                                             .Where(solver => solver != SolverType.DASSL)
+                                             .ToArray();
 
         public ISolver CreateSolver()
         {
@@ -46,7 +50,7 @@ namespace SimDas.ViewModels
             IDialogService dialogService)
         {
             // 기본값으로 DASSL 설정
-            SelectedSolverType = SolverType.DASSL;
+            SelectedSolverType = SolverType.ExplicitEuler;
             _loggingService = loggingService;
             _dialogService = dialogService;
         }

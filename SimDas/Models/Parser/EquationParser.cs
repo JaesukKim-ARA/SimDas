@@ -58,6 +58,19 @@ namespace SimDas.Parser
             _variableTypes.Clear();
             var variables = new Dictionary<string, int>();
             var variableOrder = new List<string>();
+            var differentialVariables = new HashSet<string>();
+
+            // 각 방정식에서 미분 변수 식별
+            foreach (var equation in equations)
+            {
+                var (leftSide, _) = SplitEquation(equation);
+                if (leftSide.StartsWith("der("))
+                {
+                    // der(x)와 같은 형식에서 x를 추출
+                    string varName = leftSide.Substring(4, leftSide.Length - 5);
+                    differentialVariables.Add(varName);
+                }
+            }
 
             // 각 방정식 분석
             var processedEquations = ParseEquations(equations, variables, variableOrder).ToList();
@@ -87,12 +100,12 @@ namespace SimDas.Parser
                         if (equation.StartsWith("der(") && equation.EndsWith(")"))
                         {
                             // 미분 방정식 처리
-                            residuals[i] = EvaluateEquation(equation, t, y, yprime);
+                            residuals[i] = yprime[i] - EvaluateEquation(equation, t, y, yprime);
                         }
                         else
                         {
                             // 대수 방정식 처리
-                            residuals[i] = EvaluateEquation(equation, t, y, null);
+                            residuals[i] = EvaluateEquation(equation, t, y, yprime);
                         }
                     }
                 }

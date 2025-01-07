@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -8,7 +7,10 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>SimDas</RootNamespace>
     <AssemblyName>SimDas</AssemblyName>
+	<TargetFramework>net9.0-windows</TargetFramework>
+	<UseWPF>true</UseWPF>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
@@ -31,6 +33,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -68,71 +71,10 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="App.xaml.cs">
-      <DependentUpon>App.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Models\Analysis\DAEAnalyzer.cs" />
-    <Compile Include="Models\Analysis\DEAAnalysis.cs" />
-    <Compile Include="Models\Common\CommonTypes.cs" />
-    <Compile Include="Models\Parser\EquationParser.cs" />
-    <Compile Include="Models\Parser\ExpressionParser.cs" />
-    <Compile Include="Models\Parser\TokenParser.cs" />
-    <Compile Include="Models\Solver\Base\ISolver.cs" />
-    <Compile Include="Models\Solver\Base\SolverBase.cs" />
-    <Compile Include="Models\Solver\Variable\DasslSolver.cs" />
-    <Compile Include="Models\Solver\Fixexd\ExplicitEulerSolver.cs" />
-    <Compile Include="Models\Solver\Fixexd\ImplicitEulerSolver.cs" />
-    <Compile Include="Models\Solver\Fixexd\RungeKutta4Solver.cs" />
-    <Compile Include="Services\DialogService.cs" />
-    <Compile Include="Services\LoggingService.cs" />
-    <Compile Include="Services\PlottingService.cs" />
-    <Compile Include="Test\Solvers\SolverTests.cs" />
-    <Compile Include="ViewModels\Base\ViewModelBase.cs" />
-    <Compile Include="ViewModels\InputViewModel.cs" />
-    <Compile Include="ViewModels\LogViewModel.cs" />
-    <Compile Include="ViewModels\MainViewModel.cs" />
-    <Compile Include="ViewModels\ResultViewModel.cs" />
-    <Compile Include="ViewModels\SolverSettingsViewModel.cs" />
-    <Compile Include="Views\LogView.xaml.cs">
-      <DependentUpon>LogView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Compile>
-    <Compile Include="Views\ResultView.xaml.cs">
-      <DependentUpon>ResultView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\SolverSettingsView.xaml.cs">
-      <DependentUpon>SolverSettingsView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\InputView.xaml.cs">
-      <DependentUpon>InputView.xaml</DependentUpon>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
-    <None Include=".editorconfig" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Views\Converters.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Extended.Wpf.Toolkit">
-      <Version>4.6.1</Version>
-    </PackageReference>
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.1" />
     <PackageReference Include="MathNet.Numerics">
       <Version>5.0.0</Version>
     </PackageReference>
@@ -141,6 +83,7 @@
     <PackageReference Include="Microsoft.TestPlatform">
       <Version>17.12.0</Version>
     </PackageReference>
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
     <PackageReference Include="Moq">
       <Version>4.20.72</Version>
     </PackageReference>
@@ -154,6 +97,7 @@
     <PackageReference Include="ScottPlot.WPF">
       <Version>5.0.48</Version>
     </PackageReference>
+    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
@@ -167,68 +111,61 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </ApplicationDefinition>
-    <Page Include="Views\LogView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\MainWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Page>
-    <Page Include="Views\ResultView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\SolverSettingsView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\InputView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
+	<PropertyGroup>
+		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+		<!-- 기본 포함 비활성화 -->
+		<EnableDefaultPageItems>false</EnableDefaultPageItems>
+		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion> <!-- Windows 7.0 이상 지원 -->
+	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="System" />
+		<Reference Include="System.Data" />
+		<Reference Include="System.Xml" />
+		<Reference Include="Microsoft.CSharp" />
+		<Reference Include="System.Core" />
+		<Reference Include="System.Xml.Linq" />
+		<Reference Include="System.Data.DataSetExtensions" />
+		<Reference Include="System.Net.Http" />
+		<Reference Include="System.Xaml" />
+		<Reference Include="WindowsBase" />
+		<Reference Include="PresentationCore" />
+		<Reference Include="PresentationFramework" />
+	</ItemGroup>
+    <ItemGroup>
+	    <ApplicationDefinition Include="App.xaml" />
+	    <!-- App.xaml 파일 포함 -->
+	    <!-- 명시적으로 포함해야 하는 XAML 파일 -->
+	    <Page Include="Views\InputView.xaml" />
+	    <Page Include="Views\LogView.xaml" />
+	    <Page Include="Views\MainWindow.xaml" />
+	    <Page Include="Views\ResultView.xaml" />
+	    <Page Include="Views\SolverSettingsView.xaml" />
+    </ItemGroup>
   <ItemGroup>
     <Resource Include="Views\Resources\chart.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\refresh.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\copy.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\csv.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\save.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\stop.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\play.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\pause.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\clear.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\no-data.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\resume.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Views\Resources\show.png" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
 </Project>

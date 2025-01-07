@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using SimDas.ViewModels;
+using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -13,7 +15,6 @@ namespace SimDas.Views
         public ResultView()
         {
             InitializeComponent();
-
         }
 
         private void TextBox_NumbericInput(object sender, TextCompositionEventArgs e)
