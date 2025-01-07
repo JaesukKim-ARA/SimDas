@@ -12,6 +12,8 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System;
+using SimDas.Models.Analysis;
+using System.Collections.ObjectModel;
 
 namespace SimDas.ViewModels
 {
@@ -32,6 +34,12 @@ namespace SimDas.ViewModels
         private string _initialDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Datas");
         private readonly List<PlotInfo> _plots;
         private bool _showTimeIndicator = true;
+        private DAEAnalysis _currentAnalysis;
+        private string _systemAnalysis;
+        private bool _showAnalysis;
+        private double _conditionNumber;
+        private double _stiffnessRatio;
+        private ObservableCollection<string> _systemWarnings;
 
         public WpfPlot StatesPlotControl { get; set; }
         public WpfPlot DerivativesPlotControl { get; set; }
@@ -109,6 +117,38 @@ namespace SimDas.ViewModels
             }
         }
 
+        public string SystemAnalysis
+        {
+            get => _systemAnalysis;
+            set => SetProperty(ref _systemAnalysis, value);
+        }
+
+        public bool ShowAnalysis
+        {
+            get => _showAnalysis;
+            set => SetProperty(ref _showAnalysis, value);
+        }
+
+        public double ConditionNumber
+        {
+            get => _conditionNumber;
+            private set => SetProperty(ref _conditionNumber, value);
+        }
+
+        public double StiffnessRatio
+        {
+            get => _stiffnessRatio;
+            private set => SetProperty(ref _stiffnessRatio, value);
+        }
+
+        public ObservableCollection<string> SystemWarnings
+        {
+            get => _systemWarnings;
+            private set => SetProperty(ref _systemWarnings, value);
+        }
+
+        public bool HasWarnings => SystemWarnings?.Any() == true;
+
         public ICommand ExportToCsvCommand { get; }
         public ICommand CopyToClipboardCommand { get; }
         public ICommand SavePlotCommand { get; }
@@ -148,6 +188,39 @@ namespace SimDas.ViewModels
                     GetValues = index => _currentSolution.Derivatives[index]
                 }
             };
+        }
+
+        public void UpdateAnalysis(DAEAnalysis analysis)
+        {
+            _currentAnalysis = analysis;
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"DAE Index: {analysis.Index}");
+            sb.AppendLine($"Stiff System: {(analysis.IsStiff ? "Yes" : "No")}");
+
+            int algebraicCount = analysis.AlgebraicVariables.Count(x => x);
+            sb.AppendLine($"Algebraic Variables: {algebraicCount}");
+
+            if (analysis.Eigenvalues.Any())
+            {
+                sb.AppendLine("\nEigenvalues:");
+                foreach (var eigenvalue in analysis.Eigenvalues.Take(5))
+                {
+                    sb.AppendLine($"  {eigenvalue.Real:E3} + {eigenvalue.Imaginary:E3}i");
+                }
+                if (analysis.Eigenvalues.Length > 5)
+                {
+                    sb.AppendLine("  ...");
+                }
+            }
+
+            SystemAnalysis = sb.ToString();
+            ConditionNumber = analysis.ConditionNumber;
+            StiffnessRatio = analysis.StiffnessRatio;
+            SystemWarnings = new ObservableCollection<string>(analysis.Warnings);
+
+            ShowAnalysis = true;
+            RaisePropertyChanged(nameof(HasWarnings));
         }
 
         public void DisplayResults(Solution solution, List<string> variableNames)

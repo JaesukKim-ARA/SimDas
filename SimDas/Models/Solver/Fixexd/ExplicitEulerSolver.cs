@@ -21,7 +21,7 @@ namespace SimDas.Models.Solver.Fixed
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
         {
             ValidateInputs();
-            ValidateEquationSetup(); // DAE 또는 ODE 설정 확인
+            ValidateEquationSetup(); // DAE 확인
 
             var solution = new Solution();
             double dt = (EndTime - StartTime) / Intervals;
@@ -42,7 +42,8 @@ namespace SimDas.Models.Solver.Fixed
                 }
 
                 double[] residuals = DAESystem(currentTime, currentState, currentDerivatives);
-                for (int i = 0; i < currentState.Length; i++)
+
+                for (int i = 0; i < Dimension; i++)
                 {
                     currentDerivatives[i] = residuals[i]; // Explicit Euler에서는 도함수 직접 갱신
                     currentState[i] += dt * currentDerivatives[i]; // 상태 갱신

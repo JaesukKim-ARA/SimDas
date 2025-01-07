@@ -164,4 +164,11 @@ namespace SimDas.Models.Common
             }
         }
     }
+
+    public class AnalysisProgress
+    {
+        public string Stage { get; set; }
+        public double Percentage { get; set; }
+        public string Message { get; set; }
+    }
 }

@@ -22,7 +22,6 @@ namespace SimDas.Models.Solver.Base
 
         public event EventHandler<ProgressEventArgs> OnProgressChanged;
 
-        protected ODESystem DifferentialEquation { get; private set; }
         protected DAESystem DAESystem { get; private set; }
         protected int Dimension { get; private set; }
         protected Dictionary<string, double> Parameters { get; private set; }
@@ -69,12 +68,6 @@ namespace SimDas.Models.Solver.Base
                 throw new ArgumentException("Number of intervals must be positive for steady solvers");
         }
 
-        public virtual void SetODESystem(ODESystem equation, int dimension)
-        {
-            DifferentialEquation = equation;
-            Dimension = dimension;
-        }
-
         public virtual void SetDAESystem(DAESystem daeSystem, int dimension)
         {
             DAESystem = daeSystem;
@@ -101,7 +94,7 @@ namespace SimDas.Models.Solver.Base
 
         protected virtual void ValidateEquationSetup()
         {
-            if (DifferentialEquation == null && DAESystem == null)
+            if (DAESystem == null)
             {
                 throw new InvalidOperationException("Solver requires a DifferentialEquation or DAESystem.");
             }

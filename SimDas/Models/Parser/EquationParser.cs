@@ -52,25 +52,6 @@ namespace SimDas.Parser
             .Select(v => v.Key)
             .ToList();
 
-        public (ODESystem equation, int dimension) Parse(List<string> equations)
-        {
-            // 초기화
-            _variableTypes.Clear();
-            var variables = new Dictionary<string, int>();
-            var variableOrder = new List<string>();
-
-            // 각 방정식 분석
-            var processedEquations = ParseEquations(equations, variables, variableOrder).ToList();
-
-            // 방정식 시스템 검증
-            ValidateEquationSystem(variables, processedEquations);
-
-            // 방정식 순서 정렬
-            var orderedEquations = OrderEquations(processedEquations, variables);
-
-            return (CreateEquationSystem(orderedEquations), variables.Count);
-        }
-
         public (DAESystem daeSystem, int dimension) ParseDAE(List<string> equations)
         {
             // 초기화

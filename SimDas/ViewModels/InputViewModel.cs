@@ -207,14 +207,7 @@ namespace SimDas.ViewModels
                 try
                 {
                     int dimension;
-                    if (SolverType == SolverType.DASSL)
-                    {
-                        (_, dimension) = _equationParser.ParseDAE(equations);
-                    }
-                    else
-                    {
-                        (_, dimension) = _equationParser.Parse(equations);
-                    }
+                    (_, dimension) = _equationParser.ParseDAE(equations);
 
                     if (dimension > 0)
                     {
@@ -356,7 +349,7 @@ namespace SimDas.ViewModels
             return equations;
         }
 
-        public (object equationSystem, int dimension) ParseEquations()
+        public (DAESystem daeSystem, int dimension) ParseEquations()
         {
             var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(eq => eq.Trim())

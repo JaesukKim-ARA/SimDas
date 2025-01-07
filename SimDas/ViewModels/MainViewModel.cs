@@ -6,6 +6,8 @@ using System.Windows.Input;
 using System.Threading;
 using System;
 using System.Threading.Tasks;
+using SimDas.Models.Analysis;
+using System.Linq;
 
 namespace SimDas.ViewModels
 {
@@ -14,6 +16,7 @@ namespace SimDas.ViewModels
         private readonly IDialogService _dialogService;
         private readonly ILoggingService _loggingService;
         private ISolver _currentSolver;
+        private readonly DAEAnalyzer _daeAnalyzer;
         private bool _isSolving;
         private bool _isPaused;
         private double _progress;
@@ -60,7 +63,8 @@ namespace SimDas.ViewModels
             ILoggingService loggingService,
             InputViewModel inputViewModel,
             SolverSettingsViewModel solverSettingsViewModel,
-            ResultViewModel resultViewModel)
+            ResultViewModel resultViewModel,
+            DAEAnalyzer daeAnalyzer)
         {
             _dialogService = dialogService;
             _loggingService = loggingService;
@@ -68,6 +72,7 @@ namespace SimDas.ViewModels
             InputViewModel = inputViewModel;
             SolverSettingsViewModel = solverSettingsViewModel;
             ResultViewModel = resultViewModel;
+            _daeAnalyzer = daeAnalyzer;
 
             SolveCommand = new RelayCommand(ExecuteSolve, CanExecuteSolve);
             PauseCommand = new RelayCommand(ExecutePause, () => IsSolving);
@@ -94,7 +99,50 @@ namespace SimDas.ViewModels
             {
                 IsSolving = true;
                 Progress = 0;
-                StatusMessage = "Initializing...";
+                StatusMessage = "Analyzing system...";
+
+                (var daeSystem, var dimension) = InputViewModel.ParseEquations();
+
+                using var cts = new CancellationTokenSource();
+                var progress = new Progress<AnalysisProgress>(p =>
+                {
+                    StatusMessage = p.Message;
+                    Progress = p.Percentage;
+                });
+
+                // 비동기 분석 실행
+                var analysis = await _daeAnalyzer.AnalyzeSystemAsync(
+                    (DAESystem)daeSystem,
+                    dimension,
+                    InputViewModel.GetInitialState(),
+                    InputViewModel.StartTime,
+                    cts.Token);
+
+                // 분석 결과 처리
+                ResultViewModel.UpdateAnalysis(analysis);
+
+                if (analysis.Warnings.Any())
+                {
+                    _dialogService.ShowWarning(
+                        string.Join("\n", analysis.Warnings),
+                        "DAE System Analysis");
+                }
+
+                // 부적절한 솔버 선택 경고
+                if (analysis.IsStiff &&
+                    (SolverSettingsViewModel.SelectedSolverType == SolverType.ExplicitEuler ||
+                     SolverSettingsViewModel.SelectedSolverType == SolverType.RungeKutta4))
+                {
+                    if (!_dialogService.ShowConfirmation(
+                        "Stiff system detected. Explicit methods may be unstable.\nContinue anyway?",
+                        "Solver Warning"))
+                    {
+                        IsSolving = false;
+                        return;
+                    }
+                }
+
+                StatusMessage = "Initializing solver...";
 
                 _cancellationTokenSource = new CancellationTokenSource();
                 _currentSolver = SolverSettingsViewModel.CreateSolver();
@@ -103,8 +151,7 @@ namespace SimDas.ViewModels
                 var parameters = InputViewModel.GetParameters();
                 var initialState = InputViewModel.GetInitialState();
 
-                (var daeSystem, var dimension) = InputViewModel.ParseEquations();
-                _currentSolver.SetDAESystem((DAESystem)daeSystem, dimension);
+                _currentSolver.SetDAESystem(daeSystem, dimension);
 
                 _currentSolver.InitialState = initialState;
                 _currentSolver.Initialize(parameters);
@@ -128,7 +175,8 @@ namespace SimDas.ViewModels
             }
             catch (OperationCanceledException)
             {
-                _loggingService.Warning("Solution was cancelled by user");
+                _loggingService.Warning("Operation was cancelled by user");
+                StatusMessage = "Operation cancelled";
             }
             catch (Exception ex)
             {
@@ -138,6 +186,7 @@ namespace SimDas.ViewModels
             finally
             {
                 IsSolving = false;
+                Progress = 0;
                 StatusMessage = "Ready";
                 _currentSolver?.Cleanup();
                 _currentSolver = null;

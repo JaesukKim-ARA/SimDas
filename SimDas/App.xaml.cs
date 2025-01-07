@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using SimDas.Models.Analysis;
 using SimDas.Services;
 using SimDas.ViewModels;
 using SimDas.Views;
@@ -23,6 +24,7 @@ namespace SimDas
             services.AddSingleton<ILoggingService, LoggingService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IPlottingService, PlottingService>();
+            services.AddSingleton<DAEAnalyzer>();
 
             // ViewModels
             services.AddTransient<MainViewModel>();

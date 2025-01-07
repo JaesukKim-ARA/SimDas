@@ -84,7 +84,84 @@
                              VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>
+            <!-- 분석 버튼 -->
+            <Button Margin="5" 
+                Padding="5,2"
+                Command="{Binding ToggleAnalysisCommand}">   
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Views/Resources/show.png" 
+                           Width="16" Height="16" 
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="Show Analysis" 
+                                Margin="5,0,0,0" 
+                                VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
         </StackPanel>
+
+        <Popup IsOpen="{Binding ShowAnalysis}"
+               PlacementTarget="{Binding ElementName=MainGrid}"
+               Placement="Center"
+               AllowsTransparency="True">   
+            <Border Background="White"
+            BorderBrush="Gray"
+            BorderThickness="1"
+            Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="System Analysis" 
+                      FontWeight="Bold" 
+                      FontSize="16"
+                      Margin="0,0,0,10"/>
+
+                    <ScrollViewer Grid.Row="1" 
+                         MaxHeight="400">
+                        <StackPanel>
+                            <StackPanel Margin="0,5">
+                                <TextBlock FontWeight="Bold" Text="Basic Information"/>
+                                <TextBlock Text="{Binding SystemAnalysis}"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,10,0,5">
+                                <TextBlock FontWeight="Bold" Text="Numerical Properties"/>
+                                <TextBlock>
+                            <Run Text="Condition Number: "/>
+                            <Run Text="{Binding ConditionNumber, StringFormat=E3, Mode=OneWay}"/>
+                                </TextBlock>
+                                <TextBlock>
+                            <Run Text="Stiffness Ratio: "/>
+                            <Run Text="{Binding StiffnessRatio, StringFormat=E3, Mode=OneWay}"/>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,10,0,5"
+                              Visibility="{Binding HasWarnings, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock FontWeight="Bold" Text="Warnings" Foreground="Red"/>
+                                <ItemsControl ItemsSource="{Binding SystemWarnings}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Foreground="Red" TextWrapping="Wrap"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Button Grid.Row="2"
+                    Content="Close"
+                    Command="{Binding CloseAnalysisCommand}"
+                    HorizontalAlignment="Right"
+                    Margin="0,10,0,0"/>
+                </Grid>
+            </Border>
+        </Popup>
+
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -95,23 +172,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-
-            <!-- States Plot 위에 추가 -->
-            <ItemsControl ItemsSource="{Binding CurrentValues}"
-              Grid.Row="0" Grid.Column="1" Panel.ZIndex="1000"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,10,10,0">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="1" Foreground="{Binding Item3}"/>
-                            <TextBlock Text=": "/>
-                            <TextBlock Text="{Binding value}" Foreground="{Binding color}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
 
             <!-- States Plot -->
             <ContentControl x:Name="StatesPlot"

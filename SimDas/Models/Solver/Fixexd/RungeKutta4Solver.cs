@@ -13,15 +13,10 @@ namespace SimDas.Models.Solver.Fixed
         {
         }
 
-        public override void Initialize(Dictionary<string, double> parameters)
-        {
-            base.Initialize(parameters);
-        }
-
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
         {
             ValidateInputs();
-            ValidateEquationSetup(); // DAE 또는 ODE 설정 확인
+            ValidateEquationSetup();
 
             var solution = new Solution();
             double dt = (EndTime - StartTime) / Intervals;
@@ -33,7 +28,6 @@ namespace SimDas.Models.Solver.Fixed
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // 일시정지 체크
                 if (IsPaused)
                 {
                     await _pauseCompletionSource.Task;
@@ -41,14 +35,28 @@ namespace SimDas.Models.Solver.Fixed
                         throw new OperationCanceledException();
                 }
 
+                // RK4 각 단계 계산
                 double[] k1 = DAESystem(currentTime, currentState, currentDerivatives);
-                double[] k2 = DAESystem(currentTime + dt / 2, AddVectors(currentState, MultiplyVector(k1, dt / 2)), currentDerivatives);
-                double[] k3 = DAESystem(currentTime + dt / 2, AddVectors(currentState, MultiplyVector(k2, dt / 2)), currentDerivatives);
-                double[] k4 = DAESystem(currentTime + dt, AddVectors(currentState, MultiplyVector(k3, dt)), currentDerivatives);
+                double[] k2State = new double[Dimension];
+                for (int i = 0; i < Dimension; i++)
+                    k2State[i] = currentState[i] + dt * k1[i] / 2;
+                double[] k2 = DAESystem(currentTime + dt / 2, k2State, currentDerivatives);
 
-                for (int i = 0; i < currentState.Length; i++)
+                double[] k3State = new double[Dimension];
+                for (int i = 0; i < Dimension; i++)
+                    k3State[i] = currentState[i] + dt * k2[i] / 2;
+                double[] k3 = DAESystem(currentTime + dt / 2, k3State, currentDerivatives);
+
+                double[] k4State = new double[Dimension];
+                for (int i = 0; i < Dimension; i++)
+                    k4State[i] = currentState[i] + dt * k3[i];
+                double[] k4 = DAESystem(currentTime + dt, k4State, currentDerivatives);
+
+                // 상태 업데이트
+                for (int i = 0; i < Dimension; i++)
                 {
-                    currentState[i] += dt * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6.0;
+                    currentDerivatives[i] = (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6;
+                    currentState[i] += dt * currentDerivatives[i];
                 }
 
                 solution.LogStep(currentTime, currentState, currentDerivatives);

@@ -23,7 +23,6 @@ namespace SimDas.Models.Solver.Base
         void Resume();
         void Initialize(Dictionary<string, double> parameters);
         void Cleanup();
-        void SetODESystem(ODESystem equation, int dimention);
         void SetDAESystem(DAESystem daeSystem, int dimention);
 
     }
