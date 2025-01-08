@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace SimDas.Services
@@ -70,10 +71,10 @@ namespace SimDas.Services
             OnLogAdded?.Invoke(this, entry);
         }
 
-        public void Debug(string message) => Log(message, LogLevel.Debug);
-        public void Info(string message) => Log(message, LogLevel.Info);
-        public void Warning(string message) => Log(message, LogLevel.Warning);
-        public void Error(string message) => Log(message, LogLevel.Error);
+        public void Debug(string message) => Task.Run(()=> Log(message, LogLevel.Debug));
+        public void Info(string message) => Task.Run(() => Log(message, LogLevel.Info));
+        public void Warning(string message) => Task.Run(() => Log(message, LogLevel.Warning));
+        public void Error(string message) => Task.Run(() => Log(message, LogLevel.Error));
 
         public void SaveLogs(string filePath)
         {

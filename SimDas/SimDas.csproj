@@ -7,8 +7,15 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>SimDas</RootNamespace>
     <AssemblyName>SimDas</AssemblyName>
-	<TargetFramework>net9.0-windows</TargetFramework>
+	<TargetFramework>net8.0-windows</TargetFramework>
 	<UseWPF>true</UseWPF>
+	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
+	<EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+	<DebugType>embedded</DebugType>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <FileAlignment>512</FileAlignment>
@@ -19,6 +26,7 @@
     <TargetFrameworkProfile />
     <LangVersion>latest</LangVersion>
     <PublishUrl>publish\</PublishUrl>
+	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
     <UpdateEnabled>false</UpdateEnabled>
@@ -35,6 +43,10 @@
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
+	<PropertyGroup>
+		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+		<GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+	</PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
@@ -54,6 +66,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Resources\ara.ico" />
+  </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -78,8 +93,9 @@
     <PackageReference Include="MathNet.Numerics">
       <Version>5.0.0</Version>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.TestPlatform">
       <Version>17.12.0</Version>
     </PackageReference>
@@ -93,11 +109,12 @@
     <PackageReference Include="MSTest.TestFramework">
       <Version>3.7.0</Version>
     </PackageReference>
-    <PackageReference Include="ScottPlot" Version="5.0.48" />
+    <PackageReference Include="ScottPlot" Version="5.0.51" />
     <PackageReference Include="ScottPlot.WPF">
-      <Version>5.0.48</Version>
+      <Version>5.0.51</Version>
     </PackageReference>
-    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.0" />
+    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.116.1" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
@@ -115,7 +132,8 @@
 		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
 		<!-- 기본 포함 비활성화 -->
 		<EnableDefaultPageItems>false</EnableDefaultPageItems>
-		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion> <!-- Windows 7.0 이상 지원 -->
+		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+		<ApplicationIcon>ara.ico</ApplicationIcon> <!-- Windows 7.0 이상 지원 -->
 	</PropertyGroup>
 	<ItemGroup>
 		<Reference Include="System" />
@@ -133,6 +151,7 @@
 	</ItemGroup>
     <ItemGroup>
 	    <ApplicationDefinition Include="App.xaml" />
+	    <Content Include="ara.ico" />
 	    <!-- App.xaml 파일 포함 -->
 	    <!-- 명시적으로 포함해야 하는 XAML 파일 -->
 	    <Page Include="Views\InputView.xaml" />
@@ -142,18 +161,21 @@
 	    <Page Include="Views\SolverSettingsView.xaml" />
     </ItemGroup>
   <ItemGroup>
-    <Resource Include="Views\Resources\chart.png" />
-    <Resource Include="Views\Resources\refresh.png" />
-    <Resource Include="Views\Resources\copy.png" />
-    <Resource Include="Views\Resources\csv.png" />
-    <Resource Include="Views\Resources\save.png" />
-    <Resource Include="Views\Resources\stop.png" />
-    <Resource Include="Views\Resources\play.png" />
-    <Resource Include="Views\Resources\pause.png" />
-    <Resource Include="Views\Resources\clear.png" />
-    <Resource Include="Views\Resources\no-data.png" />
-    <Resource Include="Views\Resources\resume.png" />
-    <Resource Include="Views\Resources\show.png" />
+    <Resource Include="Resources\ara.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\chart.png" />
+    <Resource Include="Resources\refresh.png" />
+    <Resource Include="Resources\copy.png" />
+    <Resource Include="Resources\csv.png" />
+    <Resource Include="Resources\save.png" />
+    <Resource Include="Resources\stop.png" />
+    <Resource Include="Resources\play.png" />
+    <Resource Include="Resources\pause.png" />
+    <Resource Include="Resources\clear.png" />
+    <Resource Include="Resources\no-data.png" />
+    <Resource Include="Resources\resume.png" />
+    <Resource Include="Resources\show.png" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Settings.Designer.cs">

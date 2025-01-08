@@ -1,6 +1,5 @@
 ﻿using SimDas.Models.Common;
 using SimDas.Models.Solver.Base;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
@@ -38,11 +37,11 @@ namespace SimDas.Models.Solver.Fixed
                         throw new OperationCanceledException();
                 }
 
-                // 다음 상태 계산
-                currentState = await SolveNextStateAsync(currentState, currentDerivatives, currentTime, dt, cancellationToken);
-                currentTime += dt;
-
                 solution.LogStep(currentTime, currentState, currentDerivatives);
+
+                // 다음 상태 계산
+                (currentState, currentDerivatives) = await SolveNextStateAsync(currentState, currentDerivatives, currentTime, dt, cancellationToken);
+                currentTime += dt;
 
                 RaiseProgressChanged(currentTime, EndTime,
                     $"Time: {currentTime:F3}/{EndTime:F3}, Step size: {dt:E3}");
@@ -53,17 +52,22 @@ namespace SimDas.Models.Solver.Fixed
             return solution;
         }
 
-        private async Task<double[]> SolveNextStateAsync(
-            double[] currentState, double[] currentDerivatives, double time, double dt, CancellationToken cancellationToken)
+        private async Task<(double[], double[])> SolveNextStateAsync(
+            double[] currentState,
+            double[] currentDerivatives,
+            double time,
+            double dt,
+            CancellationToken cancellationToken)
         {
-            // 초기 추정값으로 Explicit Euler 결과 사용
             double[] nextState = (double[])currentState.Clone();
-            double[] nextDerivatives = new double[Dimension];
+            double[] nextDerivatives = (double[])currentDerivatives.Clone();
             var baseResiduals = DAESystem(time, currentState, currentDerivatives);
 
+            // 초기 추정값 계산
             for (int i = 0; i < Dimension; i++)
             {
-                nextState[i] += dt * baseResiduals[i];
+                nextDerivatives[i] -= baseResiduals[i];
+                nextState[i] += dt * nextDerivatives[i];
             }
 
             // Newton-Raphson 반복
@@ -77,29 +81,20 @@ namespace SimDas.Models.Solver.Fixed
                 if (normRes < TOLERANCE)
                     break;
 
-                // Jacobian 계산
                 double[,] J = await CalculateJacobianAsync(nextState, nextDerivatives, time + dt, dt, cancellationToken);
-
-                // Newton step 계산
                 double[] delta = SolveLinearSystem(J, residuals);
 
-                // 해 갱신
+                // 해 및 도함수 갱신
                 for (int i = 0; i < Dimension; i++)
                 {
                     nextState[i] -= delta[i];
-                    nextDerivatives[i] = (nextState[i] - currentState[i]) / dt;
+                    nextDerivatives[i] -= residuals[i];
                 }
 
                 await Task.Yield();
             }
 
-            // 최종 도함수 계산
-            for (int i = 0; i < Dimension; i++)
-            {
-                nextDerivatives[i] = (nextState[i] - currentState[i]) / dt;
-            }
-
-            return nextState;
+            return (nextState, nextDerivatives);
         }
 
         private async Task<double[,]> CalculateJacobianAsync(

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimDas.Models.Common;
+using System;
 using System.Collections.Generic;
 
 namespace SimDas.Parser
@@ -56,7 +57,7 @@ namespace SimDas.Parser
 
         public Token[] Tokenize(string expression) => _tokenParser.Tokenize(expression);
 
-        public double EvaluateTokens(Token[] tokens, double t, double[] y)
+        public double EvaluateTokens(Token[] tokens, EvaluationContext context)
         {
             var output = new Stack<double>();
             var operators = new Stack<Token>();
@@ -72,103 +73,18 @@ namespace SimDas.Parser
                     case TokenType.Variable:
                         if (token.Value == "t")
                         {
-                            output.Push(t);
+                            output.Push(context.Time);
                         }
                         else if (_variables.TryGetValue(token.Value, out int index))
                         {
-                            output.Push(y[index]);
+                            output.Push(context.State[index]);
                         }
-                        else if (_parameters.TryGetValue(token.Value, out double paramValue))
+                        else if (token.Value.StartsWith("der(") && token.Value.EndsWith(")"))
                         {
-                            output.Push(paramValue);
-                        }
-                        else
-                        {
-                            throw new Exception($"Unknown variable or parameter: {token.Value}");
-                        }
-                        break;
-
-                    case TokenType.Operator:
-                        while (operators.Count > 0 &&
-                               operators.Peek().Type == TokenType.Operator &&
-                               operators.Peek().Precedence >= token.Precedence)
-                        {
-                            ApplyOperator(operators.Pop(), output);
-                        }
-                        operators.Push(token);
-                        break;
-
-                    case TokenType.Function:
-                        operators.Push(token);
-                        break;
-
-                    case TokenType.LeftParen:
-                        operators.Push(token);
-                        break;
-
-                    case TokenType.RightParen:
-                        while (operators.Count > 0 && operators.Peek().Type != TokenType.LeftParen)
-                        {
-                            ApplyOperator(operators.Pop(), output);
-                        }
-
-                        if (operators.Count == 0)
-                        {
-                            throw new Exception("Mismatched parentheses");
-                        }
-
-                        operators.Pop();  // Remove left parenthesis
-
-                        if (operators.Count > 0 && operators.Peek().Type == TokenType.Function)
-                        {
-                            ApplyFunction(operators.Pop(), output);
-                        }
-                        break;
-                }
-            }
-
-            while (operators.Count > 0)
-            {
-                ApplyOperator(operators.Pop(), output);
-            }
-
-            if (output.Count != 1)
-            {
-                throw new Exception("Invalid expression: incorrect number of operands");
-            }
-
-            return output.Pop();
-        }
-
-        public double EvaluateTokens(Token[] tokens, double t, double[] y, double[] yprime)
-        {
-            var output = new Stack<double>();
-            var operators = new Stack<Token>();
-
-            foreach (var token in tokens)
-            {
-                switch (token.Type)
-                {
-                    case TokenType.Number:
-                        output.Push(double.Parse(token.Value));
-                        break;
-
-                    case TokenType.Variable:
-                        if (token.Value == "t")
-                        {
-                            output.Push(t);
-                        }
-                        else if (_variables.TryGetValue(token.Value, out int index))
-                        {
-                            output.Push(y[index]);
-                        }
-                        else if (yprime != null && token.Value.StartsWith("der(") && token.Value.EndsWith(")"))
-                        {
-                            // Extract the variable name from "der(variable)"
-                            string variableName = token.Value.Substring(4, token.Value.Length - 5);
-                            if (_variables.TryGetValue(variableName, out int primeIndex))
+                            string varName = token.Value.Substring(4, token.Value.Length - 5);
+                            if (_variables.TryGetValue(varName, out int derIndex))
                             {
-                                output.Push(yprime[primeIndex]);
+                                output.Push(context.Derivatives[derIndex]);
                             }
                             else
                             {
@@ -235,6 +151,26 @@ namespace SimDas.Parser
             }
 
             return output.Pop();
+        }
+
+        public double EvaluateTokens(Token[] tokens, double t, double[] y)
+        {
+            return EvaluateTokens(tokens, new EvaluationContext
+            {
+                Time = t,
+                State = y,
+                Derivatives = new double[y.Length]
+            });
+        }
+
+        public double EvaluateTokens(Token[] tokens, double t, double[] y, double[] yprime)
+        {
+            return EvaluateTokens(tokens, new EvaluationContext
+            {
+                Time = t,
+                State = y,
+                Derivatives = yprime
+            });
         }
 
         private void ApplyOperator(Token op, Stack<double> output)

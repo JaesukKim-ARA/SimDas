@@ -29,10 +29,20 @@
         </StackPanel>
 
         <!-- 로그 리스트 -->
-        <ListBox Grid.Row="1" ItemsSource="{Binding LogEntries}">
+        <ListBox x:Name="LogListBox"
+                Grid.Row="1" ItemsSource="{Binding LogEntries}" SelectionMode="Extended" ScrollViewer.ScrollChanged="ScrollViewer_ScrollChanged"
+                 KeyDown="LogListBox_KeyDown">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding}" Foreground="{Binding TextColor}" />
+                    <TextBox Text="{Binding Path=., Mode=OneWay}" 
+                     IsReadOnly="True" 
+                     BorderThickness="0" 
+                     Foreground="{Binding TextColor}"
+                     Background="Transparent"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto"
+                     AcceptsReturn="True"
+                     GotFocus="TextBox_GotFocus" />
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>

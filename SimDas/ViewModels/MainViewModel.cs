@@ -86,7 +86,7 @@ namespace SimDas.ViewModels
             {
                 if (args.PropertyName == nameof(SolverSettingsViewModel.SelectedSolverType))
                 {
-                    InputViewModel.SolverType = SolverSettingsViewModel.SelectedSolverType;
+                    ResultViewModel.SolverType = SolverSettingsViewModel.SelectedSolverType;
                 }
             };
             LogViewModel = new LogViewModel(loggingService);

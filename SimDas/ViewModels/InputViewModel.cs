@@ -18,13 +18,6 @@ namespace SimDas.ViewModels
         private double _startTime;
         private double _endTime = 10.0;
         private bool _isValid; 
-        private SolverType _solverType;
-
-        public SolverType SolverType
-        {
-            get => _solverType;
-            set => SetProperty(ref _solverType, value);
-        }
 
         public string EquationInput
         {
@@ -73,7 +66,6 @@ namespace SimDas.ViewModels
 
         public InputViewModel(ILoggingService loggingService)
         {
-            SolverType = SolverType.DASSL;
             _loggingService = loggingService;
             _equationParser = new EquationParser(_loggingService);
             SetExampleEquations();

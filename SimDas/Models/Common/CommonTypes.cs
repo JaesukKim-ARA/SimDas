@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Text;
+using SimDas.Parser;
 
 namespace SimDas.Models.Common
 {
@@ -58,6 +59,21 @@ namespace SimDas.Models.Common
 
     public delegate double[] ODESystem(double t, double[] y);
     public delegate double[] DAESystem(double t, double[] y, double[] yprime);
+
+    public class DAEEquation
+    {
+        public string Variable { get; set; }
+        public bool IsDifferential { get; set; }
+        public string Expression { get; set; }
+        public Token[] TokenizedExpression { get; set; }
+    }
+
+    public class EvaluationContext
+    {
+        public double Time { get; set; }
+        public double[] State { get; set; }
+        public double[] Derivatives { get; set; }
+    }
 
     public class ErrorAnalysis
     {

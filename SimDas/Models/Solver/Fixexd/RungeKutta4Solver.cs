@@ -13,6 +13,7 @@ namespace SimDas.Models.Solver.Fixed
         {
         }
 
+        // RungeKutta4Solver.cs 파일 내 SolveAsync 메서드 수정
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
         {
             ValidateInputs();
@@ -35,28 +36,54 @@ namespace SimDas.Models.Solver.Fixed
                         throw new OperationCanceledException();
                 }
 
-                // RK4 각 단계 계산
-                double[] k1 = DAESystem(currentTime, currentState, currentDerivatives);
-                double[] k2State = new double[Dimension];
-                for (int i = 0; i < Dimension; i++)
-                    k2State[i] = currentState[i] + dt * k1[i] / 2;
-                double[] k2 = DAESystem(currentTime + dt / 2, k2State, currentDerivatives);
+                // RK4 각 단계의 residual 계산 
+                var k1 = new double[Dimension];
+                var k2 = new double[Dimension];
+                var k3 = new double[Dimension];
+                var k4 = new double[Dimension];
 
-                double[] k3State = new double[Dimension];
+                // k1 계산
+                var residuals = DAESystem(currentTime, currentState, currentDerivatives);
                 for (int i = 0; i < Dimension; i++)
-                    k3State[i] = currentState[i] + dt * k2[i] / 2;
-                double[] k3 = DAESystem(currentTime + dt / 2, k3State, currentDerivatives);
+                {
+                    k1[i] = dt * (currentDerivatives[i] - residuals[i]);
+                }
 
-                double[] k4State = new double[Dimension];
+                // k2 계산
+                var halfState = new double[Dimension];
                 for (int i = 0; i < Dimension; i++)
-                    k4State[i] = currentState[i] + dt * k3[i];
-                double[] k4 = DAESystem(currentTime + dt, k4State, currentDerivatives);
+                    halfState[i] = currentState[i] + k1[i] / 2;
+                residuals = DAESystem(currentTime + dt / 2, halfState, currentDerivatives);
+                for (int i = 0; i < Dimension; i++)
+                {
+                    k2[i] = dt * (currentDerivatives[i] - residuals[i]);
+                }
+
+                // k3 계산 
+                for (int i = 0; i < Dimension; i++)
+                    halfState[i] = currentState[i] + k2[i] / 2;
+                residuals = DAESystem(currentTime + dt / 2, halfState, currentDerivatives);
+                for (int i = 0; i < Dimension; i++)
+                {
+                    k3[i] = dt * (currentDerivatives[i] - residuals[i]);
+                }
+
+                // k4 계산
+                var endState = new double[Dimension];
+                for (int i = 0; i < Dimension; i++)
+                    endState[i] = currentState[i] + k3[i];
+                residuals = DAESystem(currentTime + dt, endState, currentDerivatives);
+                for (int i = 0; i < Dimension; i++)
+                {
+                    k4[i] = dt * (currentDerivatives[i] - residuals[i]);
+                }
 
                 // 상태 업데이트
                 for (int i = 0; i < Dimension; i++)
                 {
-                    currentDerivatives[i] = (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6;
-                    currentState[i] += dt * currentDerivatives[i];
+                    double stateIncrement = (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6;
+                    currentState[i] += stateIncrement;
+                    currentDerivatives[i] = stateIncrement / dt;
                 }
 
                 solution.LogStep(currentTime, currentState, currentDerivatives);

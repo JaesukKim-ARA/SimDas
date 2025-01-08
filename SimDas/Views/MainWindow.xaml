@@ -6,10 +6,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:SimDas.Views"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        Icon="/Resources/ara.ico"
         Title="SimDas - Differential Algebraic Equation Solver" 
         Height="1024" Width="1280"
         MinHeight="600" MinWidth="800"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="Manual">
 
     
     <Grid>
@@ -24,7 +25,7 @@
             <!-- Solve Button -->
             <Button Command="{Binding SolveCommand}">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/play.png" Width="16" Height="16">
+                    <Image Source="/Resources/play.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
@@ -46,7 +47,7 @@
             <!-- Pause Button -->
             <Button Command="{Binding PauseCommand}" Width="70">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/resume.png" Width="16" Height="16">
+                    <Image Source="/Resources/resume.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
@@ -78,7 +79,7 @@
             <!-- Stop Button -->
             <Button Command="{Binding StopCommand}">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/stop.png" Width="16" Height="16">
+                    <Image Source="/Resources/stop.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
@@ -101,7 +102,7 @@
             <!-- 
             <Button Command="{Binding SaveResultsCommand}">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/save.png" Width="16" Height="16">
+                    <Image Source="/Resources/save.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
@@ -123,7 +124,7 @@
             <!-- Clear Button -->
             <Button Command="{Binding InputClearCommand}">
                 <StackPanel Orientation="Horizontal">
-                    <Image Source="/Views/Resources/clear.png" Width="16" Height="16">
+                    <Image Source="/Resources/clear.png" Width="16" Height="16">
                         <Image.Style>
                             <Style TargetType="Image">
                                 <Style.Triggers>
@@ -147,7 +148,7 @@
         <!-- Main Content -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100*"/>
+                <ColumnDefinition Width="200*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="200*"/>
                 <ColumnDefinition Width="Auto"/>

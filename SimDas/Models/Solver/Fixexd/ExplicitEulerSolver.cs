@@ -21,7 +21,7 @@ namespace SimDas.Models.Solver.Fixed
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
         {
             ValidateInputs();
-            ValidateEquationSetup(); // DAE 확인
+            ValidateEquationSetup();
 
             var solution = new Solution();
             double dt = (EndTime - StartTime) / Intervals;
@@ -33,7 +33,6 @@ namespace SimDas.Models.Solver.Fixed
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // 일시정지 체크 추가
                 if (IsPaused)
                 {
                     await _pauseCompletionSource.Task;
@@ -45,8 +44,8 @@ namespace SimDas.Models.Solver.Fixed
 
                 for (int i = 0; i < Dimension; i++)
                 {
-                    currentDerivatives[i] = residuals[i]; // Explicit Euler에서는 도함수 직접 갱신
-                    currentState[i] += dt * currentDerivatives[i]; // 상태 갱신
+                    currentDerivatives[i] -= residuals[i];
+                    currentState[i] += dt * currentDerivatives[i];
                 }
 
                 solution.LogStep(currentTime, currentState, currentDerivatives);

@@ -13,6 +13,9 @@ namespace SimDas.Models.Analysis
         public double ConditionNumber { get; set; }
         public double StiffnessRatio { get; set; }
         public Complex32[] Eigenvalues { get; set; }
+        public Dictionary<int, HashSet<int>> VariableDependencies { get; set; }
+        public bool HasCircularDependency { get; set; }
+        public List<string> CircularDependencyPaths { get; set; }
 
         public DAEAnalysis()
         {

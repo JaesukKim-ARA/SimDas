@@ -34,6 +34,7 @@ namespace SimDas.ViewModels
         private string _initialDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Datas");
         private readonly List<PlotInfo> _plots;
         private bool _showTimeIndicator = true;
+        private SolverType _solverType;
         private DAEAnalysis _currentAnalysis;
         private string _systemAnalysis;
         private bool _showAnalysis;
@@ -120,6 +121,12 @@ namespace SimDas.ViewModels
                     UpdateTimeIndicators();
                 }
             }
+        }
+
+        public SolverType SolverType
+        {
+            get => _solverType;
+            set => SetProperty(ref _solverType, value);
         }
 
         public string SystemAnalysis
@@ -210,6 +217,12 @@ namespace SimDas.ViewModels
             if (Application.Current.MainWindow != null)
             {
                 Application.Current.MainWindow.Closed += (s, e) => ShowAnalysis = false;
+            }
+
+            if (!Directory.Exists(_initialDirectory))
+            {
+                Directory.CreateDirectory(_initialDirectory);
+                _loggingService.Info($"Directory created: {_initialDirectory}");
             }
         }
 
@@ -371,7 +384,7 @@ namespace SimDas.ViewModels
                     for (int i = 0; i < currentValues.Length; i++)
                     {
                         var value = currentValues[i];
-                        var marker = plot.PlotControl.Plot.Add.Text($"{(plotIndex == 1 ? "d" : "")}{_variableNames[i]} : {value:F3}", SelectedTime, value);
+                        var marker = plot.PlotControl.Plot.Add.Text($"{(plotIndex == 1 ? "d" : "")}{_variableNames[i]} : {value:+0.00;-0.00;0}", SelectedTime, value);
 
                         marker.LabelBackgroundColor = colors[i % colors.Length].WithAlpha(100);
                         marker.LabelFontColor = Colors.White;
@@ -397,7 +410,7 @@ namespace SimDas.ViewModels
             var timePoints = _currentSolution.TimePoints;
 
             // 현재 시간이 위치할 수 있는 두 시점 찾기
-            int upperIndex = timePoints.ToList().FindIndex(t => t > time);
+            int upperIndex = timePoints.ToList().FindIndex(t => t >= time);
 
             // 경계 조건 처리
             if (upperIndex == -1) // time이 마지막 시점보다 크거나 같은 경우
@@ -478,7 +491,7 @@ namespace SimDas.ViewModels
             try
             {
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var defaultFileName = $"Results_{timestamp}.csv";
+                var defaultFileName = $"Results_{SolverType}_{timestamp}.csv";
 
                 var dialog = new SaveFileDialog
                 {
@@ -515,6 +528,7 @@ namespace SimDas.ViewModels
                         writer.WriteLine();
                     }
 
+                    _loggingService.Info($"Results exproted to {dialog.FileName}");
                 }
             }
             catch (Exception ex)
@@ -588,7 +602,8 @@ namespace SimDas.ViewModels
             foreach (var plot in _plots)
             {
                 plot.TimeIndicator = null;
-                plot.PlotControl.Plot.Clear();
+                plot.Markers.Clear();
+                plot.PlotControl.Reset();
                 plot.PlotControl.Refresh();
             }
 

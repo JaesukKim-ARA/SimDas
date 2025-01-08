@@ -51,7 +51,7 @@ namespace SimDas.ViewModels
             };
 
             ClearLogsCommand = new RelayCommand(ClearLogs, () => LogEntries.Count > 1);
-            SaveLogsCommand = new RelayCommand(SaveLogs);
+            SaveLogsCommand = new RelayCommand(SaveLogs, () => LogEntries.Count > 1);
             TestLogsCommand = new RelayCommand(TestMessage);
 
             // 디폴트 로그 수준 설정

@@ -33,16 +33,21 @@ namespace SimDas.Models.Analysis
                 Warnings = new string[] { },
                 IsStiff = false,
                 ConditionNumber = double.NaN,
-                StiffnessRatio = double.NaN
+                StiffnessRatio = double.NaN,
+                VariableDependencies = new Dictionary<int, HashSet<int>>(),
+                CircularDependencyPaths = new List<string>()
             };
 
             try
             {
+                // 의존성 분석
+                AnalyzeDependencies(system, initialState, dimension, analysis);
+
                 // 대수 변수 식별
                 IdentifyAlgebraicVariables(system, initialState, initialTime, analysis);
 
                 // Index 분석
-                analysis.Index = DetermineIndex(system, initialState, initialTime, analysis.AlgebraicVariables);
+                analysis.Index = DetermineIndex(system, initialState, initialTime, analysis.AlgebraicVariables, analysis);
 
                 // Jacobian 계산
                 var jacobian = CalculateJacobian(system, initialState, new double[dimension], initialTime);
@@ -53,6 +58,7 @@ namespace SimDas.Models.Analysis
                 // Stiffness 분석 및 비율 계산
                 var eigenvalues = CalculateEigenvalues(jacobian);
                 analysis.IsStiff = CheckStiffness(system, initialState, initialTime);
+                analysis.Eigenvalues = eigenvalues;
 
                 if (eigenvalues.Length >= 2)
                 {
@@ -90,22 +96,28 @@ namespace SimDas.Models.Analysis
             {
                 AlgebraicVariables = new bool[dimension],
                 Warnings = Array.Empty<string>(),
-                Eigenvalues = Array.Empty<Complex32>()
+                Eigenvalues = Array.Empty<Complex32>(),
+                VariableDependencies = new Dictionary<int, HashSet<int>>(),
+                CircularDependencyPaths = new List<string>()
             };
 
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                // 변수 의존성 분석
+                await AnalyzeDependenciesAsync(system, initialState, dimension, analysis);
+
                 // 대수 변수 식별
                 await IdentifyAlgebraicVariablesAsync(system, initialState, initialTime, analysis);
 
                 cancellationToken.ThrowIfCancellationRequested();
                 // Index 분석
-                analysis.Index = await DetermineIndexAsync(system, initialState, initialTime, analysis.AlgebraicVariables);
+                analysis.Index = await DetermineIndexAsync(system, initialState, initialTime, analysis.AlgebraicVariables, analysis);
+
 
                 cancellationToken.ThrowIfCancellationRequested();
-                // Jacobian 계산 - 병렬 처리 적용
+                // Jacobian 계산
                 var jacobian = await CalculateJacobianParallelAsync(system, initialState, new double[dimension], initialTime);
 
                 // 조건수 계산
@@ -145,43 +157,106 @@ namespace SimDas.Models.Analysis
             return analysis;
         }
 
-        private void IdentifyAlgebraicVariables(DAESystem system, double[] state, double time, DAEAnalysis analysis)
+        private void AnalyzeDependencies(
+            DAESystem system,
+            double[] state,
+            int dimension,
+            DAEAnalysis analysis)
         {
-            // 초기화
-            for (int i = 0; i < state.Length; i++)
+            var dependencies = new Dictionary<int, HashSet<int>>();
+            var visitedNodes = new HashSet<int>();
+            var currentPath = new HashSet<int>();
+
+            // 각 변수에 대한 의존성 분석
+            for (int i = 0; i < dimension; i++)
             {
-                analysis.AlgebraicVariables[i] = false;
+                if (!dependencies.ContainsKey(i))
+                {
+                    dependencies[i] = new HashSet<int>();
+                    DetectDependencies(i, dependencies, visitedNodes, currentPath, system, state, dimension, analysis);
+                }
             }
 
-            double[] derivatives = new double[state.Length];
-            double[] baseResiduals = system(time, state, derivatives);
+            analysis.VariableDependencies = dependencies;
+        }
 
-            // 각 방정식에 대해 도함수 의존성 검사
-            for (int i = 0; i < state.Length; i++)
+        private async Task AnalyzeDependenciesAsync(
+            DAESystem system,
+            double[] state,
+            int dimension,
+            DAEAnalysis analysis)
+        {
+            await Task.Run(() =>
             {
-                bool isDifferential = false;
-                var testDerivatives = (double[])derivatives.Clone();
+                AnalyzeDependencies(system, state, dimension, analysis);
+            });
+        }
 
-                // 도함수 변화에 대한 잔차 변화 검사
-                testDerivatives[i] += PERTURBATION;
-                var perturbedResiduals = system(time, state, testDerivatives);
+        private void DetectDependencies(
+            int currentVar,
+            Dictionary<int, HashSet<int>> dependencies,
+            HashSet<int> visitedNodes,
+            HashSet<int> currentPath,
+            DAESystem system,
+            double[] state,
+            int dimension,
+            DAEAnalysis analysis)
+        {
+            if (currentPath.Contains(currentVar))
+            {
+                // 순환 의존성 발견
+                var cycle = new List<int>(currentPath) { currentVar };
+                var cyclePath = string.Join(" → ", cycle.Select(v => $"var_{v}"));
+                if (!string.IsNullOrEmpty(cyclePath))
+                {
+                    analysis.HasCircularDependency = true;
+                    analysis.CircularDependencyPaths.Add(cyclePath);
+                }
+                return;
+            }
 
-                for (int j = 0; j < state.Length; j++)
+            if (visitedNodes.Contains(currentVar))
+            {
+                return;
+            }
+
+            visitedNodes.Add(currentVar);
+            currentPath.Add(currentVar);
+
+            // 변수 의존성 검사
+            double[] derivatives = new double[dimension];
+            var baseState = (double[])state.Clone();
+            var baseResiduals = system(0, baseState, derivatives);
+
+            for (int i = 0; i < dimension; i++)
+            {
+                if (i == currentVar) continue;
+
+                baseState[i] += PERTURBATION;
+                var perturbedResiduals = system(0, baseState, derivatives);
+                baseState[i] -= PERTURBATION;
+
+                // 의존성 검사
+                for (int j = 0; j < dimension; j++)
                 {
                     if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
                     {
-                        isDifferential = true;
-                        break;
+                        dependencies[currentVar].Add(i);
+                        if (!dependencies.ContainsKey(i))
+                        {
+                            dependencies[i] = new HashSet<int>();
+                            DetectDependencies(i, dependencies, visitedNodes, currentPath, system, state, dimension, analysis);
+                        }
                     }
                 }
-
-                analysis.AlgebraicVariables[i] = !isDifferential;
             }
+
+            currentPath.Remove(currentVar);
         }
 
-        private async Task IdentifyAlgebraicVariablesAsync(DAESystem system, double[] state, double time, DAEAnalysis analysis)
+        private void IdentifyAlgebraicVariables(DAESystem system, double[] state, double time, DAEAnalysis analysis)
         {
-            // 초기화: 모든 변수를 미분 변수로 설정
+            // 초기화 - 기본값을 false로 변경 (미분 변수로 가정)
             for (int i = 0; i < state.Length; i++)
             {
                 analysis.AlgebraicVariables[i] = false;
@@ -190,37 +265,41 @@ namespace SimDas.Models.Analysis
             double[] derivatives = new double[state.Length];
             double[] baseResiduals = system(time, state, derivatives);
 
-            var tasks = new Task[state.Length];
-
-            for (int i = 0; i < state.Length; i++)
+            Parallel.For(0, state.Length, i =>
             {
-                int index = i;  // 클로저를 위한 복사
-                tasks[i] = Task.Run(() =>
+                var testDerivatives = (double[])derivatives.Clone();
+                testDerivatives[i] += PERTURBATION;
+
+                var perturbedResiduals = system(time, state, testDerivatives);
+
+                // 민감도 분석을 통한 대수 변수 식별
+                double sensitivity = 0.0;
+                for (int j = 0; j < state.Length; j++)
                 {
-                    bool isDifferential = false;
-                    var testDerivatives = (double[])derivatives.Clone();
+                    sensitivity += Math.Abs(perturbedResiduals[j] - baseResiduals[j]);
+                }
 
-                    // 도함수 변화에 대한 잔차 변화 검사
-                    testDerivatives[index] += PERTURBATION;
-                    var perturbedResiduals = system(time, state, testDerivatives);
-
-                    for (int j = 0; j < state.Length; j++)
-                    {
-                        if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
-                        {
-                            isDifferential = true;
-                            break;
-                        }
-                    }
-
-                    analysis.AlgebraicVariables[index] = !isDifferential;
-                });
-            }
-
-            await Task.WhenAll(tasks);
+                // 임계값보다 작은 민감도를 가진 경우 대수 변수로 판단
+                if (sensitivity < PERTURBATION)
+                {
+                    analysis.AlgebraicVariables[i] = true;
+                }
+            });
         }
 
-        private int DetermineIndex(DAESystem system, double[] state, double time, bool[] algebraicVars)
+        private async Task IdentifyAlgebraicVariablesAsync(
+            DAESystem system,
+            double[] state,
+            double time,
+            DAEAnalysis analysis)
+        {
+            await Task.Run(() =>
+            {
+                IdentifyAlgebraicVariables(system, state, time, analysis);
+            });
+        }
+
+        private int DetermineIndex(DAESystem system, double[] state, double time, bool[] algebraicVars, DAEAnalysis analysis)
         {
             int index = 1;
             double[] derivatives = new double[state.Length];
@@ -236,14 +315,10 @@ namespace SimDas.Models.Analysis
                 {
                     if (!currentAlgebraic[i]) continue;
 
-                    state[i] += PERTURBATION;
-                    double[] perturbedResiduals = system(time, state, derivatives);
-                    state[i] -= PERTURBATION;
-
                     nextAlgebraic[i] = true;
-                    for (int j = 0; j < state.Length; j++)
+                    foreach (var dep in analysis.VariableDependencies[i])
                     {
-                        if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
+                        if (!currentAlgebraic[dep])
                         {
                             nextAlgebraic[i] = false;
                             foundDependency = true;
@@ -252,7 +327,7 @@ namespace SimDas.Models.Analysis
                     }
                 }
 
-                if (!foundDependency) break;  // 더 이상 의존성이 없으면 현재 인덱스가 DAE 인덱스
+                if (!foundDependency) break;
                 currentAlgebraic = nextAlgebraic;
                 index++;
             }
@@ -260,53 +335,17 @@ namespace SimDas.Models.Analysis
             return index;
         }
 
-        private async Task<int> DetermineIndexAsync(DAESystem system, double[] state, double time, bool[] algebraicVars)
+        private async Task<int> DetermineIndexAsync(
+            DAESystem system,
+            double[] state,
+            double time,
+            bool[] algebraicVars,
+            DAEAnalysis analysis)  // analysis 매개변수 추가
         {
-            int index = 1;
-            double[] derivatives = new double[state.Length];
-            bool[] currentAlgebraic = (bool[])algebraicVars.Clone();
-
-            while (currentAlgebraic.Any(x => x) && index < 4)
+            return await Task.Run(() =>
             {
-                //cancellationToken.ThrowIfCancellationRequested();
-
-                bool[] nextAlgebraic = new bool[state.Length];
-                double[] baseResiduals = system(time, state, derivatives);
-                bool foundDependency = false;
-
-                var tasks = new List<Task>();
-                for (int i = 0; i < state.Length; i++)
-                {
-                    if (!currentAlgebraic[i]) continue;
-
-                    int localI = i;  // 클로저를 위한 로컬 변수
-                    tasks.Add(Task.Run(() =>
-                    {
-                        var localState = (double[])state.Clone();
-                        localState[localI] += PERTURBATION;
-                        var perturbedResiduals = system(time, localState, derivatives);
-
-                        nextAlgebraic[localI] = true;
-                        for (int j = 0; j < state.Length; j++)
-                        {
-                            if (Math.Abs(perturbedResiduals[j] - baseResiduals[j]) > PERTURBATION)
-                            {
-                                nextAlgebraic[localI] = false;
-                                foundDependency = true;
-                                break;
-                            }
-                        }
-                    }));
-                }
-
-                await Task.WhenAll(tasks);
-
-                if (!foundDependency) break;  // 더 이상 의존성이 없으면 현재 인덱스가 DAE 인덱스
-                currentAlgebraic = nextAlgebraic;
-                index++;
-            }
-
-            return index;
+                return DetermineIndex(system, state, time, algebraicVars, analysis);  // analysis 전달
+            });
         }
 
         private bool CheckStiffness(DAESystem system, double[] state, double time)
@@ -319,7 +358,6 @@ namespace SimDas.Models.Analysis
 
                 if (!eigenvalues.Any()) return false;
 
-                // 실수부가 음수인 eigenvalue만 고려
                 var negativeEigenvalues = eigenvalues
                     .Where(e => e.Real < 0)
                     .Select(e => Math.Abs(e.Real))
@@ -330,7 +368,6 @@ namespace SimDas.Models.Analysis
                 double maxReal = negativeEigenvalues.Max();
                 double minReal = negativeEigenvalues.Min();
 
-                // Stiffness ratio 계산
                 double stiffnessRatio = maxReal / minReal;
                 _loggingService.Debug($"Stiffness ratio: {stiffnessRatio}");
 
@@ -345,37 +382,7 @@ namespace SimDas.Models.Analysis
 
         private async Task<bool> CheckStiffnessAsync(DAESystem system, double[] state, double time)
         {
-            try
-            {
-                double[] derivatives = new double[state.Length];
-                var jacobian = await CalculateJacobianParallelAsync(system, state, derivatives, time);
-                var eigenvalues = CalculateEigenvalues(jacobian);
-
-                return await Task.Run(() =>
-                {
-                    if (!eigenvalues.Any()) return false;
-
-                    var negativeEigenvalues = eigenvalues
-                        .Where(e => e.Real < 0)
-                        .Select(e => Math.Abs(e.Real))
-                        .ToList();
-
-                    if (negativeEigenvalues.Count < 2) return false;
-
-                    double maxReal = negativeEigenvalues.Max();
-                    double minReal = negativeEigenvalues.Min();
-
-                    double stiffnessRatio = maxReal / minReal;
-                    _loggingService.Debug($"Stiffness ratio: {stiffnessRatio}");
-
-                    return stiffnessRatio > STIFFNESS_THRESHOLD;
-                });
-            }
-            catch (Exception ex)
-            {
-                _loggingService.Error($"Stiffness check failed: {ex.Message}");
-                return false;
-            }
+            return await Task.Run(() => CheckStiffness(system, state, time));
         }
 
         private void GenerateWarnings(DAEAnalysis analysis)
@@ -398,7 +405,84 @@ namespace SimDas.Models.Analysis
                 warnings.Add($"System contains {algebraicCount} algebraic constraints.");
             }
 
+            if (analysis.HasCircularDependency)
+            {
+                warnings.Add("Circular dependencies detected in the system:");
+                foreach (var path in analysis.CircularDependencyPaths)
+                {
+                    warnings.Add($"  Circular path: {path}");
+                }
+            }
+
+            var stronglyConnected = FindStronglyConnectedComponents(analysis.VariableDependencies);
+            if (stronglyConnected.Any(component => component.Count > 1))
+            {
+                warnings.Add("Strongly connected components detected:");
+                foreach (var component in stronglyConnected.Where(c => c.Count > 1))
+                {
+                    warnings.Add($"  Variables: {string.Join(", ", component.Select(v => $"var_{v}"))}");
+                }
+            }
+
             analysis.Warnings = warnings.ToArray();
+        }
+
+        private List<HashSet<int>> FindStronglyConnectedComponents(
+            Dictionary<int, HashSet<int>> dependencies)
+        {
+            var components = new List<HashSet<int>>();
+            var visited = new HashSet<int>();
+            var stack = new Stack<int>();
+            var onStack = new HashSet<int>();
+            var indices = new Dictionary<int, int>();
+            var lowLinks = new Dictionary<int, int>();
+            int index = 0;
+
+            foreach (var vertex in dependencies.Keys)
+            {
+                if (!visited.Contains(vertex))
+                {
+                    StrongConnect(vertex);
+                }
+            }
+
+            void StrongConnect(int v)
+            {
+                indices[v] = index;
+                lowLinks[v] = index;
+                index++;
+                stack.Push(v);
+                onStack.Add(v);
+                visited.Add(v);
+
+                foreach (var w in dependencies[v])
+                {
+                    if (!indices.ContainsKey(w))
+                    {
+                        StrongConnect(w);
+                        lowLinks[v] = Math.Min(lowLinks[v], lowLinks[w]);
+                    }
+                    else if (onStack.Contains(w))
+                    {
+                        lowLinks[v] = Math.Min(lowLinks[v], indices[w]);
+                    }
+                }
+
+                if (lowLinks[v] == indices[v])
+                {
+                    var component = new HashSet<int>();
+                    int w;
+                    do
+                    {
+                        w = stack.Pop();
+                        onStack.Remove(w);
+                        component.Add(w);
+                    } while (w != v);
+                    components.Add(component);
+                }
+            }
+
+            return components;
         }
 
         private double[,] CalculateJacobian(DAESystem system, double[] state, double[] derivatives, double time)
@@ -538,9 +622,9 @@ namespace SimDas.Models.Analysis
 
                 var evd = denseMatrix.Evd();
                 var eigenvalues = evd.EigenValues
-                                    .Select(c => new Complex32((float)c.Real, (float)c.Imaginary))
-                                    .Where(c => !float.IsNaN(c.Real) && !float.IsInfinity(c.Real))
-                                    .ToArray();
+                    .Select(c => new Complex32((float)c.Real, (float)c.Imaginary))
+                    .Where(c => !float.IsNaN(c.Real) && !float.IsInfinity(c.Real))
+                    .ToArray();
 
                 // 결과 로깅
                 _loggingService.Debug($"Calculated {eigenvalues.Length} eigenvalues");

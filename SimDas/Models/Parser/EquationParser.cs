@@ -7,11 +7,17 @@ using SimDas.Services;
 
 namespace SimDas.Parser
 {
+    public class DAEEquation
+    {
+        public string Variable { get; set; }
+        public bool IsDifferential { get; set; }
+        public string Expression { get; set; }
+        public Token[] TokenizedExpression { get; set; }
+    }
+
     public class EquationParser
     {
         private readonly ExpressionParser _expressionParser;
-        private readonly HashSet<string> _knownFunctions;
-        private readonly List<(string name, bool isDifferential)> _variableTypes;
         private readonly HashSet<string> _parameters;
         private readonly ILoggingService _loggingService;
 
@@ -19,8 +25,6 @@ namespace SimDas.Parser
         {
             _loggingService = loggingService;
             _expressionParser = new ExpressionParser();
-            _knownFunctions = new HashSet<string> { "der", "sin", "cos", "exp", "sqrt", "tan" };
-            _variableTypes = new List<(string, bool)>();
             _parameters = new HashSet<string>();
         }
 
@@ -28,85 +32,101 @@ namespace SimDas.Parser
 
         public void SetParameters(Dictionary<string, double> parameters)
         {
-            _loggingService.Debug("Setting parameters...");
+            _loggingService.Info("Setting parameters...");
             _parameters.Clear();
             foreach (var param in parameters)
             {
                 _parameters.Add(param.Key);
+                _loggingService.Debug($"Parameter: {param.Key} = {param.Value}");
             }
             _expressionParser.SetParameters(parameters);
-            _loggingService.Debug($"Parameters set successfully: {string.Join(", ", parameters.Keys)}");
+            _loggingService.Info("Parameters set successfully.");
         }
 
         public void Reset()
         {
-            _loggingService.Info("Resetting equation parser...");
             _expressionParser.Reset();
-            _variableTypes.Clear();
             _parameters.Clear();
-            _loggingService.Info("Equation parser reset completed");
         }
 
-        public List<string> GetVariableNames() => _expressionParser.GetVariables()
-            .OrderBy(v => v.Value)
-            .Select(v => v.Key)
-            .ToList();
+        public List<string> GetVariableNames() =>
+            _expressionParser.GetVariables()
+                .OrderBy(v => v.Value)
+                .Select(v => v.Key)
+                .ToList();
 
         public (DAESystem daeSystem, int dimension) ParseDAE(List<string> equations)
         {
-            // 초기화
-            _variableTypes.Clear();
-            var variables = new Dictionary<string, int>();
-            var variableOrder = new List<string>();
-            var differentialVariables = new HashSet<string>();
-
-            // 각 방정식에서 미분 변수 식별
+            _loggingService.Info("Parsing equations...");
             foreach (var equation in equations)
             {
-                var (leftSide, _) = SplitEquation(equation);
-                if (leftSide.StartsWith("der("))
+                _loggingService.Debug($"Equation: {equation}");
+            }
+            var parsedEquations = new List<DAEEquation>();
+            var variables = new Dictionary<string, int>();
+
+            // 방정식 파싱 및 변수 매핑
+            foreach (var equation in equations)
+            {
+                var (leftSide, rightSide) = SplitEquation(equation);
+                var (varName, isDifferential) = ParseLeftSide(leftSide);
+
+                // 중복 변수 체크
+                if (variables.ContainsKey(varName))
                 {
-                    // der(x)와 같은 형식에서 x를 추출
-                    string varName = leftSide.Substring(4, leftSide.Length - 5);
-                    differentialVariables.Add(varName);
+                    _loggingService.Error($"Variable {varName} appears in multiple equations.");
+                    throw new Exception($"Variable {varName} appears in multiple equations");
                 }
+
+                // 변수 등록
+                variables[varName] = variables.Count;
+                _expressionParser.AddVariable(varName);
+
+                var tokens = _expressionParser.Tokenize(rightSide);
+                parsedEquations.Add(new DAEEquation
+                {
+                    Variable = varName,
+                    IsDifferential = isDifferential,
+                    Expression = rightSide,
+                    TokenizedExpression = tokens
+                });
+
+                _loggingService.Debug($"Parsed Equation: Variable={varName}, IsDifferential={isDifferential}, Expression={rightSide}");
             }
 
-            // 각 방정식 분석
-            var processedEquations = ParseEquations(equations, variables, variableOrder).ToList();
+            // 시스템 검증
+            ValidateSystem(variables, parsedEquations);
 
-            // 방정식 시스템 검증
-            ValidateEquationSystem(variables, processedEquations);
-
-            // 방정식 순서 정렬
-            var orderedEquations = OrderEquations(processedEquations, variables);
-
-            return (CreateDAESystem(orderedEquations, variables), variables.Count);
+            _loggingService.Info("Equation parsing completed.");
+            return (CreateDAESystem(parsedEquations, variables), variables.Count);
         }
 
-        private DAESystem CreateDAESystem(string[] orderedEquations, Dictionary<string, int> variables)
+        private DAESystem CreateDAESystem(List<DAEEquation> equations, Dictionary<string, int> variables)
         {
+            _loggingService.Info("Creating DAE system...");
+            foreach (var eq in equations)
+            {
+                _loggingService.Debug($"DAE Equation: Variable={eq.Variable}, IsDifferential={eq.IsDifferential}, Expression={eq.Expression}");
+            }
+
             return (double t, double[] y, double[] yprime) =>
             {
-                var residuals = new double[orderedEquations.Length];
+                double[] residuals = new double[variables.Count];
 
-                for (int i = 0; i < orderedEquations.Length; i++)
+                for (int i = 0; i < equations.Count; i++)
                 {
-                    var equation = orderedEquations[i];
-                    if (variables.ContainsKey(equation))
+                    if (equations[i].IsDifferential)
                     {
-                        var variableIndex = variables[equation];
+                        var rhsValue = _expressionParser.EvaluateTokens(equations[i].TokenizedExpression, t, y);
+                        var varIndex = variables[equations[i].Variable];
+                        residuals[i] = yprime[varIndex] - rhsValue;
 
-                        if (equation.StartsWith("der(") && equation.EndsWith(")"))
-                        {
-                            // 미분 방정식 처리
-                            residuals[i] = yprime[i] - EvaluateEquation(equation, t, y, yprime);
-                        }
-                        else
-                        {
-                            // 대수 방정식 처리
-                            residuals[i] = EvaluateEquation(equation, t, y, yprime);
-                        }
+                        _loggingService.Debug($"Evaluating Differential Equation: {equations[i].Variable}, Residual={residuals[i]:E3}");
+                    }
+                    else
+                    {
+                        residuals[i] = _expressionParser.EvaluateTokens(equations[i].TokenizedExpression, t, y);
+                        _loggingService.Debug($"Evaluating Algebraic Equation: {equations[i].Variable}, Residual={residuals[i]:E3}");
                     }
                 }
 
@@ -114,47 +134,12 @@ namespace SimDas.Parser
             };
         }
 
-        private double EvaluateEquation(string equation, double t, double[] y, double[] yprime)
-        {
-            return _expressionParser.EvaluateTokens(_expressionParser.Tokenize(equation), t, y, yprime);
-        }
-
-
-        private IEnumerable<(string variable, string expression, bool isDifferential)>
-        ParseEquations(List<string> equations, Dictionary<string, int> variables, List<string> variableOrder)
-        {
-            foreach (var equation in equations)
-            {
-                // 방정식 전처리
-                var (leftSide, rightSide) = SplitEquation(equation);
-                var (varName, isDifferential) = ParseLeftSide(leftSide);
-
-                // 변수 추가
-                if (!variables.ContainsKey(varName))
-                {
-                    variables[varName] = variables.Count;
-                    variableOrder.Add(varName);
-                }
-                else
-                {
-                    throw new Exception($"Variable {varName} appears in multiple equations");
-                }
-
-                // 변수 타입 기록
-                _variableTypes.Add((varName, isDifferential));
-
-                // 유효한 변수 목록에 추가
-                _expressionParser.AddVariable(varName);
-
-                yield return (varName, rightSide, isDifferential);
-            }
-        }
-
         private (string leftSide, string rightSide) SplitEquation(string equation)
         {
-            var parts = equation.Split(new[] { '=' }, StringSplitOptions.RemoveEmptyEntries)
-                                .Select(p => p.Trim())
-                                .ToArray();
+            var parts = equation.Split('=')
+                .Select(p => p.Trim())
+                .ToArray();
+
             if (parts.Length != 2)
                 throw new Exception($"Invalid equation format: {equation}");
 
@@ -173,131 +158,91 @@ namespace SimDas.Parser
                     throw new Exception($"Cannot use parameter {varName} as variable");
                 return (varName, true);
             }
-            else
-            {
-                if (!Regex.IsMatch(leftSide, @"^[a-zA-Z][a-zA-Z0-9]*$"))
-                    throw new Exception($"Invalid variable name: {leftSide}");
-                if (_parameters.Contains(leftSide))
-                    throw new Exception($"Cannot use parameter {leftSide} as variable");
-                return (leftSide, false);
-            }
+
+            if (!Regex.IsMatch(leftSide, @"^[a-zA-Z][a-zA-Z0-9]*$"))
+                throw new Exception($"Invalid variable name: {leftSide}");
+            if (_parameters.Contains(leftSide))
+                throw new Exception($"Cannot use parameter {leftSide} as variable");
+
+            return (leftSide, false);
         }
 
-        private void ValidateEquationSystem(
-            Dictionary<string, int> variables,
-            List<(string variable, string expression, bool isDifferential)> equations)
+        private void ValidateSystem(Dictionary<string, int> variables, List<DAEEquation> equations)
         {
-            // 방정식 수와 변수 수가 일치하는지 확인
             if (equations.Count != variables.Count)
             {
-                var error = $"Number of equations ({equations.Count}) does not match number of variables ({variables.Count})";
-                _loggingService.Error(error);
-                throw new Exception(error);
+                throw new Exception(
+                    $"Number of equations ({equations.Count}) does not match number of variables ({variables.Count})");
             }
 
-            // 각 변수에 대한 방정식이 있는지 확인
-            var definedVariables = equations.Select(e => e.variable).ToHashSet();
+            var definedVariables = equations.Select(e => e.Variable).ToHashSet();
             var undefinedVariables = variables.Keys.Where(v => !definedVariables.Contains(v));
 
             if (undefinedVariables.Any())
             {
-                var error = $"Missing equations for variables: {string.Join(", ", undefinedVariables)}";
-                _loggingService.Error(error);
-                throw new Exception(error);
+                throw new Exception(
+                    $"Missing equations for variables: {string.Join(", ", undefinedVariables)}");
             }
-
-            _loggingService.Debug($"Equation system validation passed\n{string.Join("\n", equations)}");
-        }
-
-        private string[] OrderEquations(
-            List<(string variable, string expression, bool isDifferential)> equations,
-            Dictionary<string, int> variables)
-        {
-            var orderedEquations = new string[variables.Count];
-
-            foreach (var (variable, expression, _) in equations)
-            {
-                int index = variables[variable];
-                orderedEquations[index] = expression;
-            }
-
-            return orderedEquations;
-        }
-
-        private ODESystem CreateEquationSystem(string[] orderedEquations)
-        {
-            // 각 방정식을 토큰화
-            var tokenizedEquations = orderedEquations
-                .Select(eq => _expressionParser.Tokenize(eq))
-                .ToArray();
-
-            // 방정식 시스템 생성
-            return (t, y) =>
-            {
-                var results = new double[tokenizedEquations.Length];
-                for (int i = 0; i < tokenizedEquations.Length; i++)
-                {
-                    results[i] = _expressionParser.EvaluateTokens(tokenizedEquations[i], t, y);
-                }
-                return results;
-            };
         }
 
         public double[] ParseInitialConditions(List<string> conditions)
         {
+            _loggingService.Info("Parsing initial conditions...");
             var variables = _expressionParser.GetVariables();
             if (variables.Count == 0)
+            {
+                _loggingService.Error("No variables defined. Parse equations first.");
                 throw new Exception("No variables defined. Parse equations first.");
+            }
 
             var initialValues = new double[variables.Count];
             var processedVariables = new HashSet<string>();
 
-            // 각 초기조건 파싱
+
             foreach (var condition in conditions)
             {
                 var (varName, value) = ParseInitialCondition(condition);
 
                 if (!variables.ContainsKey(varName))
+                {
+                    _loggingService.Error($"Unknown variable in initial conditions: {varName}");
                     throw new Exception($"Unknown variable in initial conditions: {varName}");
-
+                }
                 if (!processedVariables.Add(varName))
+                {
+                    _loggingService.Error($"Duplicate initial condition for variable: {varName}");
                     throw new Exception($"Duplicate initial condition for variable: {varName}");
+                }
 
                 initialValues[variables[varName]] = value;
+                _loggingService.Debug($"Initial Condition: {varName} = {value}");
             }
 
-            // 모든 변수에 대한 초기값이 제공되었는지 확인
             var missingVariables = variables.Keys.Where(v => !processedVariables.Contains(v));
             if (missingVariables.Any())
             {
-                throw new Exception(
-                    $"Missing initial conditions for variables: {string.Join(", ", missingVariables)}");
+                var missingVars = string.Join(", ", missingVariables);
+                _loggingService.Error($"Missing initial conditions for variables: {missingVars}");
+                throw new Exception($"Missing initial conditions for variables: {missingVars}");
             }
 
+            _loggingService.Info("Initial conditions parsing completed.");
             return initialValues;
         }
 
-        public (string varName, double value) ParseInitialCondition(string condition)
+        private (string varName, double value) ParseInitialCondition(string condition)
         {
-            var parts = condition.Split(new[] { '=' }, StringSplitOptions.RemoveEmptyEntries)
-                                .Select(p => p.Trim())
-                                .ToArray();
+            var parts = condition.Split('=')
+                .Select(p => p.Trim())
+                .ToArray();
+
             if (parts.Length != 2)
-            {
-                var error = $"Invalid initial condition format: {condition}";
-                _loggingService.Error(error);
-                throw new Exception(error);
-            }
+                throw new Exception($"Invalid initial condition format: {condition}");
 
             string varName = parts[0];
             if (!double.TryParse(parts[1], out double value))
-            {
-                var error = $"Invalid number format in initial condition: {parts[1]}";
-                _loggingService.Error(error);
-                throw new Exception(error);
-            }
+                throw new Exception($"Invalid number format in initial condition: {parts[1]}");
 
-            _loggingService.Debug($"Parsed initial condition: {varName} = {value}");
             return (varName, value);
         }
     }

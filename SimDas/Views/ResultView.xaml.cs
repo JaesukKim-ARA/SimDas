@@ -17,6 +17,14 @@ namespace SimDas.Views
             InitializeComponent();
         }
 
+        private void TextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                textBox.SelectAll(); // TextBox 안의 모든 텍스트 선택
+            }
+        }
+
         private void TextBox_NumbericInput(object sender, TextCompositionEventArgs e)
         {
             // 숫자만 허용

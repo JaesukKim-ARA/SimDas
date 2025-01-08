@@ -44,7 +44,7 @@
                    VerticalAlignment="Center"/>
             <xctk:DoubleUpDown Grid.Column="3"
                           Minimum="{Binding StartTime}"
-                          Maximum="1000"
+                          Maximum="1000000"
                           Value="{Binding EndTime}"
                           Increment="0.1"
                           Watermark="10.0"

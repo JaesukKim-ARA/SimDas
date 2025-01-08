@@ -19,7 +19,13 @@ namespace SimDas.ViewModels
         public SolverType SelectedSolverType
         {
             get => _selectedSolverType;
-            set => SetProperty(ref _selectedSolverType, value);
+            set
+            {
+                if (SetProperty(ref _selectedSolverType, value))
+                {
+                    _loggingService.Info($"Solver Changed : {_selectedSolverType}");
+                }
+            }
         }
 
         public int Intervals
