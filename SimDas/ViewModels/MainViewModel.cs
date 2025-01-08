@@ -81,12 +81,18 @@ namespace SimDas.ViewModels
             SaveResultsCommand = new RelayCommand(ExecuteSaveResults, CanExecuteSaveResults);
             InputClearCommand = new RelayCommand(ExecuteInputClear, CanExecuteInputClear);
 
-            // SolverSettingsViewModel의 SolverType을 InputViewModel과 동기화
             SolverSettingsViewModel.PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(SolverSettingsViewModel.SelectedSolverType))
                 {
                     ResultViewModel.SolverType = SolverSettingsViewModel.SelectedSolverType;
+                }
+            };
+            InputViewModel.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(InputViewModel.SolverType))
+                {
+                    SolverSettingsViewModel.SelectedSolverType = InputViewModel.SolverType;
                 }
             };
             LogViewModel = new LogViewModel(loggingService);

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using SimDas.Models.Common;
+using System.Windows.Input;
 
 namespace SimDas.ViewModels
 {
@@ -15,9 +16,14 @@ namespace SimDas.ViewModels
         private string _equationInput = string.Empty;
         private string _parameterInput = string.Empty;
         private string _initialValueInput = string.Empty;
+        private SolverType _solverType;
         private double _startTime;
         private double _endTime = 10.0;
-        private bool _isValid; 
+        private bool _isValid;
+
+        public ICommand Example1Command { get; }
+        public ICommand Example2Command { get; }
+        public ICommand Example3Command { get; }
 
         public string EquationInput
         {
@@ -32,6 +38,12 @@ namespace SimDas.ViewModels
                     ValidateInputs();
                 }
             }
+        }
+
+        public SolverType SolverType
+        {
+            get => _solverType;
+            set => SetProperty(ref _solverType, value);
         }
 
         public string ParameterInput
@@ -68,7 +80,11 @@ namespace SimDas.ViewModels
         {
             _loggingService = loggingService;
             _equationParser = new EquationParser(_loggingService);
-            SetExampleEquations();
+            SetExample_MSD();
+
+            Example1Command = new RelayCommand(SetExample_MSD);
+            Example2Command = new RelayCommand(SetExample_Robertson);
+            Example3Command = new RelayCommand(SetExample_Bioreactor);
         }
 
         private void UpdateValidVariables()
@@ -154,7 +170,7 @@ namespace SimDas.ViewModels
             return leftSide;
         }
 
-        private void SetExampleEquations()
+        private void SetExample_MSD()
         {
             // Mass-Spring-Damper example
             EquationInput = "der(x) = v\r\nder(v) = (-k*x - c*v)/m";
@@ -164,7 +180,26 @@ namespace SimDas.ViewModels
             EndTime = 10;
         }
 
+        private void SetExample_Robertson()
+        {
+            // Robertson example
+            EquationInput = "der(x)=-a*x+b*y*z\r\nder(y)=a*x-b*y*z-c*z*z\r\nz=1-x-y";
+            ParameterInput = "a=4e-2; b=1e4; c=3e7";
+            InitialValueInput = "x=1; y=0; z=0";
+            StartTime = 0;
+            EndTime = 100;
+        }
 
+        private void SetExample_Bioreactor()
+        {
+            // Bioreactor example
+            EquationInput = "der(x)=mu*x\r\nder(s)=-mu*x/y\r\np=20.1-x-s\r\nmu=mu_max*(s/(ks+s))*(1-p/pm)";
+            ParameterInput = "mu_max=0.48; ks=1.2; y=0.5; pm=50";
+            InitialValueInput = "x=0.1; s=20; p=0; mu=0.9434";
+            StartTime = 0;
+            EndTime = 24;
+            SolverType = SolverType.ImplicitEuler;
+        }
 
         private void ValidateInputs()
         {

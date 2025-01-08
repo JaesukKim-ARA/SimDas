@@ -16,6 +16,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Time Settings -->
@@ -84,5 +85,18 @@
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  FontFamily="Consolas"/>
+        <StackPanel Grid.Row="7" Orientation="Horizontal">
+            <Button Margin="5" Command="{Binding Example1Command}">
+                <TextBlock Text="test1"/>
+            </Button>
+            <Button Margin="5" Command="{Binding Example2Command}">
+                <TextBlock Text="test2"/>
+            </Button>
+            <!--
+            <Button Margin="5" Command="{Binding Example3Command}">
+                <TextBlock Text="test3"/>
+            </Button>
+            -->
+        </StackPanel>
     </Grid>
 </UserControl>

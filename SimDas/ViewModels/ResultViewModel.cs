@@ -305,6 +305,7 @@ namespace SimDas.ViewModels
                 DerivativesPlotControl.Plot.Add.VerticalLine(0, color: Colors.Black);
                 StatesPlotControl.Plot.Add.HorizontalLine(0, color: Colors.Black);
                 DerivativesPlotControl.Plot.Add.HorizontalLine(0, color: Colors.Black);
+                StatesPlotControl.Plot.Axes.NumericTicksBottom();
 
                 UpdateLogContent();
 
