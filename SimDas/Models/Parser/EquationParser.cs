@@ -7,19 +7,12 @@ using SimDas.Services;
 
 namespace SimDas.Parser
 {
-    public class DAEEquation
-    {
-        public string Variable { get; set; }
-        public bool IsDifferential { get; set; }
-        public string Expression { get; set; }
-        public Token[] TokenizedExpression { get; set; }
-    }
-
     public class EquationParser
     {
         private readonly ExpressionParser _expressionParser;
         private readonly HashSet<string> _parameters;
         private readonly ILoggingService _loggingService;
+        private bool _isInMultilineComment = false;
 
         public EquationParser(ILoggingService loggingService)
         {
@@ -58,15 +51,18 @@ namespace SimDas.Parser
         public (DAESystem daeSystem, int dimension) ParseDAE(List<string> equations)
         {
             _loggingService.Info("Parsing equations...");
-            foreach (var equation in equations)
-            {
-                _loggingService.Debug($"Equation: {equation}");
-            }
+            _isInMultilineComment = false;  // 파싱 시작 시 상태 초기화
+
             var parsedEquations = new List<DAEEquation>();
             var variables = new Dictionary<string, int>();
 
-            // 방정식 파싱 및 변수 매핑
-            foreach (var equation in equations)
+            // 먼저 주석을 제거하고 유효한 방정식만 필터링
+            var validEquations = equations
+                .Select(eq => RemoveComments(eq))
+                .Where(eq => !string.IsNullOrWhiteSpace(eq))
+                .ToList();
+
+            foreach (var equation in validEquations)
             {
                 var (leftSide, rightSide) = SplitEquation(equation);
                 var (varName, isDifferential) = ParseLeftSide(leftSide);
@@ -94,7 +90,6 @@ namespace SimDas.Parser
                 _loggingService.Debug($"Parsed Equation: Variable={varName}, IsDifferential={isDifferential}, Expression={rightSide}");
             }
 
-            // 시스템 검증
             ValidateSystem(variables, parsedEquations);
 
             _loggingService.Info("Equation parsing completed.");
@@ -134,6 +129,64 @@ namespace SimDas.Parser
             };
         }
 
+        private string RemoveComments(string equation)
+        {
+            if (string.IsNullOrWhiteSpace(equation))
+                return string.Empty;
+
+            // 공백 제거 및 트림 처리
+            equation = equation.Trim();
+
+            // 한 줄 주석 처리 (//)
+            int singleLineIndex = equation.IndexOf("//", StringComparison.Ordinal);
+            if (singleLineIndex >= 0)
+            {
+                string beforeComment = equation.Substring(0, singleLineIndex).Trim();
+                return string.IsNullOrWhiteSpace(beforeComment) ? string.Empty : beforeComment;
+            }
+
+            // Python 스타일 주석 처리 (#)
+            int pythonStyleIndex = equation.IndexOf("#", StringComparison.Ordinal);
+            if (pythonStyleIndex >= 0)
+            {
+                string beforeComment = equation.Substring(0, pythonStyleIndex).Trim();
+                return string.IsNullOrWhiteSpace(beforeComment) ? string.Empty : beforeComment;
+            }
+
+            // 여러 줄 주석 처리
+            if (_isInMultilineComment)
+            {
+                int endIndex = equation.IndexOf("*/", StringComparison.Ordinal);
+                if (endIndex == -1)
+                    return string.Empty;
+
+                _isInMultilineComment = false;
+                equation = equation.Substring(endIndex + 2).Trim();
+                return string.IsNullOrWhiteSpace(equation) ? string.Empty : equation;
+            }
+
+            while (true)
+            {
+                int startIndex = equation.IndexOf("/*", StringComparison.Ordinal);
+                if (startIndex == -1)
+                    break;
+
+                int endIndex = equation.IndexOf("*/", startIndex, StringComparison.Ordinal);
+                if (endIndex == -1)
+                {
+                    _isInMultilineComment = true;
+                    equation = equation.Substring(0, startIndex).Trim();
+                    return string.IsNullOrWhiteSpace(equation) ? string.Empty : equation;
+                }
+
+                equation = equation.Remove(startIndex, endIndex - startIndex + 2).Trim();
+                if (string.IsNullOrWhiteSpace(equation))
+                    return string.Empty;
+            }
+
+            return equation;
+        }
+
         private (string leftSide, string rightSide) SplitEquation(string equation)
         {
             var parts = equation.Split('=')
@@ -148,6 +201,7 @@ namespace SimDas.Parser
 
         private (string varName, bool isDifferential) ParseLeftSide(string leftSide)
         {
+            // 기존 코드
             var derPattern = new Regex(@"der\(([a-zA-Z][a-zA-Z0-9]*)\)");
             var match = derPattern.Match(leftSide);
 
@@ -159,8 +213,11 @@ namespace SimDas.Parser
                 return (varName, true);
             }
 
+            // 변수 이름 패턴을 더 엄격하게 수정
             if (!Regex.IsMatch(leftSide, @"^[a-zA-Z][a-zA-Z0-9]*$"))
-                throw new Exception($"Invalid variable name: {leftSide}");
+            {
+                throw new Exception($"Invalid variable name: {leftSide}. Variable names must start with a letter and can only contain letters and numbers");
+            }
             if (_parameters.Contains(leftSide))
                 throw new Exception($"Cannot use parameter {leftSide} as variable");
 
@@ -169,19 +226,26 @@ namespace SimDas.Parser
 
         private void ValidateSystem(Dictionary<string, int> variables, List<DAEEquation> equations)
         {
-            if (equations.Count != variables.Count)
+            // 실제 변수들만 추출 (주석이나 공백이 아닌 실제 방정식에서 사용된 변수들)
+            var actualVariables = equations
+                .Where(eq => !string.IsNullOrWhiteSpace(eq.Variable))
+                .Select(e => e.Variable)
+                .ToHashSet();
+
+            if (equations.Count != actualVariables.Count)
             {
+                _loggingService.Error($"Number of valid equations ({equations.Count}) does not match number of variables ({actualVariables.Count})");
                 throw new Exception(
-                    $"Number of equations ({equations.Count}) does not match number of variables ({variables.Count})");
+                    $"Number of equations ({equations.Count}) does not match number of variables ({actualVariables.Count})");
             }
 
-            var definedVariables = equations.Select(e => e.Variable).ToHashSet();
-            var undefinedVariables = variables.Keys.Where(v => !definedVariables.Contains(v));
+            var undefinedVariables = actualVariables.Where(v => !variables.ContainsKey(v));
 
             if (undefinedVariables.Any())
             {
-                throw new Exception(
-                    $"Missing equations for variables: {string.Join(", ", undefinedVariables)}");
+                var missingVars = string.Join(", ", undefinedVariables);
+                _loggingService.Error($"Missing equations for variables: {missingVars}");
+                throw new Exception($"Missing equations for variables: {missingVars}");
             }
         }
 

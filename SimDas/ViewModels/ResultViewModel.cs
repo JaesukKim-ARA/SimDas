@@ -83,7 +83,7 @@ namespace SimDas.ViewModels
         public bool HasResults
         {
             get => _hasResults;
-            private set
+            set
             {
                 if (SetProperty(ref _hasResults, value))
                 {
@@ -320,9 +320,9 @@ namespace SimDas.ViewModels
 
         private readonly Color[] colors =
         {
-            Colors.Blue,
             Colors.Red,
             Colors.Green,
+            Colors.Blue,
             Colors.Orange,
             Colors.Purple,
             Colors.Brown,

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace SimDas.Parser
@@ -37,6 +38,11 @@ namespace SimDas.Parser
 
         public Token[] Tokenize(string expression)
         {
+            // 주석 제거
+            expression = RemoveComments(expression);
+            if (string.IsNullOrWhiteSpace(expression))
+                return Array.Empty<Token>();
+
             var tokens = new List<Token>();
             var tokenPattern = new Regex(
                 @"\s*(?:([0-9]*\.?[0-9]+)|([a-zA-Z_][a-zA-Z0-9_]*)|(\+|\-|\*|/|\^)|(,)|(\()|(\)))\s*");
@@ -97,6 +103,28 @@ namespace SimDas.Parser
             }
 
             return tokens.ToArray();
+        }
+
+        private string RemoveComments(string expression)
+        {
+            if (string.IsNullOrWhiteSpace(expression))
+                return string.Empty;
+
+            // 한 줄 주석 처리 (//)
+            int singleLineIndex = expression.IndexOf("//", StringComparison.Ordinal);
+            if (singleLineIndex >= 0)
+            {
+                expression = expression.Substring(0, singleLineIndex);
+            }
+
+            // Python 스타일 주석 처리 (#)
+            int pythonStyleIndex = expression.IndexOf("#", StringComparison.Ordinal);
+            if (pythonStyleIndex >= 0)
+            {
+                expression = expression.Substring(0, pythonStyleIndex);
+            }
+
+            return expression.Trim();
         }
 
         private static int GetPrecedence(string op) => op switch

@@ -32,37 +32,43 @@ namespace SimDas.Views.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool boolValue)
+            if (value is bool booleanValue)
             {
-                if (boolValue)
-                {
-                    return Visibility.Collapsed;
-                }
-                else
-                {
-                    return Visibility.Visible;
-                }
+                return booleanValue ? Visibility.Visible : Visibility.Collapsed;
             }
-            return value;
+            return Visibility.Visible;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool boolValue)
+            if (value is Visibility visibilityValue)
             {
-                if (boolValue)
-                {
-                    return Visibility.Visible;
-                }
-                else
-                {
-                    return Visibility.Collapsed;
-                }
+                return visibilityValue == Visibility.Visible ? true : false;
             }
-            return value;
+            return false;
         }
     }
 
+    public class InvertedBooleanToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool booleanValue)
+            {
+                return booleanValue ? Visibility.Collapsed : Visibility.Visible;
+            }
+            return Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is Visibility visibilityValue)
+            {
+                return visibilityValue == Visibility.Collapsed ? true : false;
+            }
+            return false;
+        }
+    }
 
     public class SolverDescriptionConverter : IValueConverter
 	{

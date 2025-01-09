@@ -15,6 +15,7 @@
     <UserControl.Resources>
         <Converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <Converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <Converters:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter"/>
         <Converters:HalfSizeConverter x:Key="HalfSizeConverter"/>
     </UserControl.Resources>
     <Grid ClipToBounds="False">
@@ -233,7 +234,7 @@
                     Grid.Row="0" 
                     Grid.RowSpan="8"
                     Background="#80FFFFFF"
-                    Visibility="{Binding HasResults, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
+                    Visibility="{Binding HasResults, Converter={StaticResource InvertedBooleanToVisibilityConverter}, Mode=OneWay}">
                 <StackPanel x:Name="NoResultStackPanel"
                     VerticalAlignment="Center" 
                     HorizontalAlignment="Center">

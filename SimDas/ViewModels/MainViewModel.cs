@@ -38,7 +38,15 @@ namespace SimDas.ViewModels
         public bool IsSolving
         {
             get => _isSolving;
-            private set => SetProperty(ref _isSolving, value);
+            private set
+            {
+                if (SetProperty(ref _isSolving, value))
+                {
+                    ResultViewModel.HasResults = !_isSolving;
+                    InputViewModel.IsSolving = _isSolving;
+                }
+
+            }
         }
 
         public bool IsPaused

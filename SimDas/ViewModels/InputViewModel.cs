@@ -20,6 +20,7 @@ namespace SimDas.ViewModels
         private double _startTime;
         private double _endTime = 10.0;
         private bool _isValid;
+        private bool _isSolving;
 
         public ICommand Example1Command { get; }
         public ICommand Example2Command { get; }
@@ -28,16 +29,7 @@ namespace SimDas.ViewModels
         public string EquationInput
         {
             get => _equationInput;
-            set
-            {
-
-                if (SetProperty(ref _equationInput, value, ValidateInputs))
-                {
-                    // 방정식이 변경되면 변수 목록 초기화
-                    UpdateValidVariables();
-                    ValidateInputs();
-                }
-            }
+            set => SetProperty(ref _equationInput, value, ValidateInputs);
         }
 
         public SolverType SolverType
@@ -76,6 +68,12 @@ namespace SimDas.ViewModels
             private set => SetProperty(ref _isValid, value);
         }
 
+        public bool IsSolving
+        {
+            get => _isSolving;
+            set => SetProperty(ref _isSolving, value);
+        }
+
         public InputViewModel(ILoggingService loggingService)
         {
             _loggingService = loggingService;
@@ -87,93 +85,10 @@ namespace SimDas.ViewModels
             Example3Command = new RelayCommand(SetExample_Bioreactor);
         }
 
-        private void UpdateValidVariables()
-        {
-            try
-            {
-                // 새로운 방정식 파싱
-                var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                                             .Select(eq => eq.Trim())
-                                             .Where(eq => !string.IsNullOrEmpty(eq))
-                                             .ToList();
-
-                // 방정식에서 유효 변수 추출
-                var variables = new HashSet<string>();
-                foreach (var equation in equations)
-                {
-                    var (leftSide, _) = SplitEquation(equation);
-                    var varName = ParseVariableName(leftSide);
-                    if (!string.IsNullOrEmpty(varName))
-                    {
-                        variables.Add(varName);
-                    }
-                }
-
-                // 현재 초기값 파싱
-                var currentInitialValues = new Dictionary<string, double>();
-                var initialValuePairs = InitialValueInput.Split(';')
-                    .Select(s => s.Trim())
-                    .Where(s => !string.IsNullOrEmpty(s));
-
-                foreach (var pair in initialValuePairs)
-                {
-                    var parts = pair.Split('=');
-                    if (parts.Length == 2 && double.TryParse(parts[1].Trim(), out double value))
-                    {
-                        currentInitialValues[parts[0].Trim()] = value;
-                    }
-                }
-
-                // 새로운 초기값 문자열 생성
-                var newInitialValues = new List<string>();
-                foreach (var variable in variables)
-                {
-                    if (currentInitialValues.TryGetValue(variable, out double value))
-                    {
-                        newInitialValues.Add($"{variable}={value}");
-                    }
-                    else
-                    {
-                        newInitialValues.Add($"{variable}=0"); // 새로운 변수는 기본값 0으로 설정
-                    }
-                }
-
-                // 초기값 업데이트
-                InitialValueInput = string.Join("; ", newInitialValues);
-
-                // ExpressionParser 업데이트
-                _equationParser.GetExpressionParser().SetValidVariables(variables.ToList());
-
-                _loggingService.Debug($"Valid variables updated: {string.Join(", ", variables)}");
-            }
-            catch (Exception ex)
-            {
-                _loggingService.Error($"Failed to update valid variables: {ex.Message}");
-            }
-        }
-
-        private (string leftSide, string rightSide) SplitEquation(string equation)
-        {
-            var parts = equation.Split('=');
-            if (parts.Length != 2)
-                throw new Exception($"Invalid equation format: {equation}");
-            return (parts[0].Trim(), parts[1].Trim());
-        }
-
-        private string ParseVariableName(string leftSide)
-        {
-            // der(x) 형태 처리
-            if (leftSide.StartsWith("der(") && leftSide.EndsWith(")"))
-            {
-                return leftSide.Substring(4, leftSide.Length - 5);
-            }
-            return leftSide;
-        }
-
         private void SetExample_MSD()
         {
             // Mass-Spring-Damper example
-            EquationInput = "der(x) = v\r\nder(v) = (-k*x - c*v)/m";
+            EquationInput = "// Mass-Spring-Damper Example\r\nder(x) = v\r\nder(v) = (-k*x - c*v)/m";
             ParameterInput = "k=2; c=0.5; m=1";
             InitialValueInput = "x=1; v=0";
             StartTime = 0;
@@ -183,7 +98,7 @@ namespace SimDas.ViewModels
         private void SetExample_Robertson()
         {
             // Robertson example
-            EquationInput = "der(x)=-a*x+b*y*z\r\nder(y)=a*x-b*y*z-c*z*z\r\nz=1-x-y";
+            EquationInput = "// Robertson Example\r\nder(x)=-a*x+b*y*z\r\nder(y)=a*x-b*y*z-c*z*z\r\nz=1-x-y";
             ParameterInput = "a=4e-2; b=1e4; c=3e7";
             InitialValueInput = "x=1; y=0; z=0";
             StartTime = 0;
@@ -193,9 +108,9 @@ namespace SimDas.ViewModels
         private void SetExample_Bioreactor()
         {
             // Bioreactor example
-            EquationInput = "der(x)=mu*x\r\nder(s)=-mu*x/y\r\np=20.1-x-s\r\nmu=mu_max*(s/(ks+s))*(1-p/pm)";
-            ParameterInput = "mu_max=0.48; ks=1.2; y=0.5; pm=50";
-            InitialValueInput = "x=0.1; s=20; p=0; mu=0.9434";
+            EquationInput = "// Bioreactorder Example\r\nder(x) = mu * s/(1+s) * x\r\nder(s) = -(1/Yx) * mu * s/(1+s) * x\r\nder(p) = alpha * mu * s/(1+s) * x + beta * x";
+            ParameterInput = "mu=0.2; Yx=0.5; alpha=2.0; beta=0.05";
+            InitialValueInput = "x=0.1; s=10; p=0";
             StartTime = 0;
             EndTime = 24;
             SolverType = SolverType.ImplicitEuler;

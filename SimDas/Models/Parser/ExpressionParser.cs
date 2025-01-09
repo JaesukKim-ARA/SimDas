@@ -1,6 +1,7 @@
 ﻿using SimDas.Models.Common;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SimDas.Parser
 {
@@ -26,12 +27,22 @@ namespace SimDas.Parser
             _validVariableNames.Clear();
             _variables.Clear();
 
-            foreach (var variable in variables)
+            // 주석이나 공백을 제외한 실제 변수 이름만 추가
+            foreach (var variable in variables.Where(v => !string.IsNullOrWhiteSpace(v)))
             {
-                _validVariableNames.Add(variable);
-                if (!_parameters.ContainsKey(variable))
+                // 주석의 일부나 특수문자가 포함된 변수명은 제외
+                if (variable.Contains("//") || variable.Contains("/*") ||
+                    variable.Contains("*/") || variable.Contains("#"))
+                    continue;
+
+                // 실제 변수 이름만 추가
+                if (IsValidVariableName(variable))
                 {
-                    _variables[variable] = _variables.Count;
+                    _validVariableNames.Add(variable);
+                    if (!_parameters.ContainsKey(variable))
+                    {
+                        _variables[variable] = _variables.Count;
+                    }
                 }
             }
         }
@@ -47,13 +58,16 @@ namespace SimDas.Parser
 
         public void AddVariable(string name)
         {
-            if (!_parameters.ContainsKey(name) &&
-            _validVariableNames.Contains(name) &&
-            !_variables.ContainsKey(name))
+            if (IsValidVariableName(name) && !_parameters.ContainsKey(name))
             {
-                _variables[name] = _variables.Count;
+                _validVariableNames.Add(name);
+                if (!_variables.ContainsKey(name))
+                {
+                    _variables[name] = _variables.Count;
+                }
             }
         }
+
 
         public Token[] Tokenize(string expression) => _tokenParser.Tokenize(expression);
 
@@ -171,6 +185,31 @@ namespace SimDas.Parser
                 State = y,
                 Derivatives = yprime
             });
+        }
+
+        private bool IsValidVariableName(string name)
+        {
+            // null이거나 빈 문자열 체크
+            if (string.IsNullOrWhiteSpace(name))
+                return false;
+
+            // 첫 문자는 반드시 알파벳이어야 함
+            if (!char.IsLetter(name[0]))
+                return false;
+
+            // 두 번째 문자부터는 알파벳이나 숫자만 허용
+            for (int i = 1; i < name.Length; i++)
+            {
+                if (!char.IsLetterOrDigit(name[i]))
+                    return false;
+            }
+
+            // 예약어 체크 (der, t 등은 변수로 사용할 수 없음)
+            var reservedWords = new HashSet<string> { "der", "t" };
+            if (reservedWords.Contains(name))
+                return false;
+
+            return true;
         }
 
         private void ApplyOperator(Token op, Stack<double> output)
