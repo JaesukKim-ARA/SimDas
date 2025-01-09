@@ -31,6 +31,8 @@ namespace SimDas
             services.AddTransient<InputViewModel>();
             services.AddTransient<SolverSettingsViewModel>();
             services.AddTransient<ResultViewModel>();
+            services.AddTransient<LogViewModel>();
+            services.AddTransient<SampleViewModel>();
         }
 
         protected override void OnStartup(StartupEventArgs e)

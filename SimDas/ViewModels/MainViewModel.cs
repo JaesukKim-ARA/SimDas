@@ -73,6 +73,7 @@ namespace SimDas.ViewModels
             InputViewModel inputViewModel,
             SolverSettingsViewModel solverSettingsViewModel,
             ResultViewModel resultViewModel,
+            LogViewModel logViewModel,
             DAEAnalyzer daeAnalyzer)
         {
             _dialogService = dialogService;
@@ -81,8 +82,8 @@ namespace SimDas.ViewModels
             InputViewModel = inputViewModel;
             SolverSettingsViewModel = solverSettingsViewModel;
             ResultViewModel = resultViewModel;
-            SampleViewModel = new SampleViewModel(InputViewModel);
-            LogViewModel = new LogViewModel(loggingService);
+            SampleViewModel = new SampleViewModel(inputViewModel);
+            LogViewModel = logViewModel;
             _daeAnalyzer = daeAnalyzer;
 
             SolveCommand = new RelayCommand(ExecuteSolve, CanExecuteSolve);
