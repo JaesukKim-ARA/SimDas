@@ -28,6 +28,7 @@ namespace SimDas.ViewModels
         public SolverSettingsViewModel SolverSettingsViewModel { get; }
         public ResultViewModel ResultViewModel { get; }
         public LogViewModel LogViewModel { get; }
+        public SampleViewModel SampleViewModel { get; }
 
         public ICommand SolveCommand { get; }
         public ICommand PauseCommand { get; }
@@ -43,7 +44,6 @@ namespace SimDas.ViewModels
                 if (SetProperty(ref _isSolving, value))
                 {
                     ResultViewModel.HasResults = !_isSolving;
-                    InputViewModel.IsSolving = _isSolving;
                 }
 
             }
@@ -81,6 +81,8 @@ namespace SimDas.ViewModels
             InputViewModel = inputViewModel;
             SolverSettingsViewModel = solverSettingsViewModel;
             ResultViewModel = resultViewModel;
+            SampleViewModel = new SampleViewModel(InputViewModel);
+            LogViewModel = new LogViewModel(loggingService);
             _daeAnalyzer = daeAnalyzer;
 
             SolveCommand = new RelayCommand(ExecuteSolve, CanExecuteSolve);
@@ -103,7 +105,6 @@ namespace SimDas.ViewModels
                     SolverSettingsViewModel.SelectedSolverType = InputViewModel.SolverType;
                 }
             };
-            LogViewModel = new LogViewModel(loggingService);
         }
 
         private bool CanExecuteSolve() => !IsSolving && InputViewModel.IsValid;

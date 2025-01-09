@@ -158,6 +158,7 @@
 	    <Page Include="Views\LogView.xaml" />
 	    <Page Include="Views\MainWindow.xaml" />
 	    <Page Include="Views\ResultView.xaml" />
+		<Page Include="Views\SampleView.xaml"/>
 	    <Page Include="Views\SolverSettingsView.xaml" />
     </ItemGroup>
   <ItemGroup>

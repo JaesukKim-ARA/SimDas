@@ -5,15 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:SimDas.ViewModels"
-             xmlns:Converters="clr-namespace:SimDas.Views.Converters"
-             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit">
-
-    <UserControl.Resources>
-        <Converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
-        <Converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <Converters:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter"/>
-        <Converters:HalfSizeConverter x:Key="HalfSizeConverter"/>
-    </UserControl.Resources>
+             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+             xmlns:local="clr-namespace:SimDas.Models.Common"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors">
     
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -76,7 +70,8 @@
         <Label Grid.Row="3" 
                Content="Parameters (name=value; ...):"
                FontWeight="Bold"/>
-        <TextBox Grid.Row="4"
+        <TextBox x:Name="ParameterTextBox"
+                 Grid.Row="4"
                  Text="{Binding ParameterInput, UpdateSourceTrigger=PropertyChanged}"
                  AcceptsReturn="True"
                  VerticalScrollBarVisibility="Auto"
@@ -87,47 +82,12 @@
         <Label Grid.Row="5" 
                Content="Initial Values (name=value; ...):"
                FontWeight="Bold"/>
-        <TextBox Grid.Row="6"
+        <TextBox x:Name="InitialValueTextBox"
+                 Grid.Row="6"
                  Text="{Binding InitialValueInput, UpdateSourceTrigger=PropertyChanged}"
                  AcceptsReturn="True"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  FontFamily="Consolas"/>
-        <StackPanel Grid.Row="7" Orientation="Horizontal">
-            <Button Margin="5" Command="{Binding Example1Command}">
-                <TextBlock Text="test1"/>
-            </Button>
-            <Button Margin="5" Command="{Binding Example2Command}">
-                <TextBlock Text="test2"/>
-            </Button>
-            <Button Margin="5" Command="{Binding Example3Command}">
-                <TextBlock Text="test3"/>
-            </Button>
-        </StackPanel>
-
-        <Border x:Name="SolvingOverlay" 
-            Grid.Row="0" 
-            Grid.RowSpan="8"
-            Background="#80FFFFFF"
-            Visibility="{Binding IsSolving, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}">
-            <StackPanel x:Name="SolvingStackPanel"
-                VerticalAlignment="Center" 
-                HorizontalAlignment="Center">
-                <Image x:Name="SolvingImage"
-                    Source="/Resources/no-data.png" 
-                    Opacity="0.5"
-                    MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}"
-                    MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}" 
-                />
-                <TextBlock x:Name="SolvingTextBlock"
-                    Text="Calculation in progress"
-                    FontSize="32"
-                    HorizontalAlignment="Center"
-                    Margin="0,10,0,0"
-                    Opacity="0.5"
-                    Foreground="#666666"
-                />
-            </StackPanel>
-        </Border>
     </Grid>
 </UserControl>
