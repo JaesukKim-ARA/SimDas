@@ -68,6 +68,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Resources\ara.ico" />
+    <None Remove="Views\SampleView.xaml" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -158,6 +159,9 @@
 	    <Page Include="Views\LogView.xaml" />
 	    <Page Include="Views\MainWindow.xaml" />
 	    <Page Include="Views\ResultView.xaml" />
+	    <Page Include="Views\SampleView.xaml">
+	      <Generator>MSBuild:Compile</Generator>
+	    </Page>
 	    <Page Include="Views\SolverSettingsView.xaml" />
     </ItemGroup>
   <ItemGroup>

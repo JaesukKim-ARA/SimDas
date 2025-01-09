@@ -10,16 +10,15 @@
         Title="SimDas - Differential Algebraic Equation Solver" 
         Height="1024" Width="1280"
         MinHeight="600" MinWidth="800"
-        WindowStartupLocation="Manual">
+        WindowStartupLocation="CenterScreen">
 
-    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- Tool Bar -->
         <ToolBar Grid.Row="0">
             <!-- Solve Button -->
@@ -155,6 +154,32 @@
                 <ColumnDefinition Width="200*"/>
             </Grid.ColumnDefinitions>
 
+            <Border x:Name="SolvingOverlay" 
+                Grid.Column="2" 
+                Grid.Row="0"
+                Grid.RowSpan="8"
+                Panel.ZIndex="1"
+                Background="#80FFFFFF"
+                Visibility="{Binding IsSolving, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}"> 
+                <StackPanel x:Name="SolvingStackPanel"
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center">
+                    <Image x:Name="SolvingImage"
+                        Source="/Resources/no-data.png" 
+                        Opacity="0.5"
+                        MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}"
+                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource HalfSizeConverter}}" 
+                    />
+                    <TextBlock x:Name="SolvingTextBlock"
+                        Text="Calculation in progress"
+                        FontSize="32"
+                        HorizontalAlignment="Center"
+                        Margin="0,10,0,0"
+                        Opacity="0.5"
+                        Foreground="#666666"
+                    />
+                </StackPanel>
+            </Border>
 
             <!-- Left Panel - Logs -->
             <Grid Grid.Column="0">
@@ -173,6 +198,8 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="2*"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -184,8 +211,16 @@
                              HorizontalAlignment="Stretch" 
                              Background="LightGray"/>
 
-                <views:SolverSettingsView Grid.Row="2" 
-                                         DataContext="{Binding SolverSettingsViewModel}"/>
+                <views:SampleView Grid.Row="2"
+                             DataContext="{Binding SampleViewModel}"/>
+
+                <GridSplitter Grid.Row="3" 
+                  Height="5" 
+                  HorizontalAlignment="Stretch" 
+                  Background="LightGray"/>
+
+                <views:SolverSettingsView Grid.Row="4" 
+                             DataContext="{Binding SolverSettingsViewModel}"/>
             </Grid>
 
             <!-- Splitter -->

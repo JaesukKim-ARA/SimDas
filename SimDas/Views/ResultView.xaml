@@ -8,16 +8,9 @@
              xmlns:vm="clr-namespace:SimDas.ViewModels"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:local="clr-namespace:SimDas.Models.Common"
-             xmlns:Converters="clr-namespace:SimDas.Views.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type={x:Type vm:ResultViewModel}}">
-
-    <UserControl.Resources>
-        <Converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
-        <Converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-        <Converters:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter"/>
-        <Converters:HalfSizeConverter x:Key="HalfSizeConverter"/>
-    </UserControl.Resources>
+    
     <Grid ClipToBounds="False">
         <Grid x:Name="MainGrid" >
             <Grid.RowDefinitions>

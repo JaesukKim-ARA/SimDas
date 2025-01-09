@@ -5,7 +5,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using SimDas.Models.Common;
-using System.Windows.Input;
+using System.Windows.Documents;
+using System.Windows.Media;
+using System.Windows;
+using System.Collections.ObjectModel;
 
 namespace SimDas.ViewModels
 {
@@ -20,16 +23,12 @@ namespace SimDas.ViewModels
         private double _startTime;
         private double _endTime = 10.0;
         private bool _isValid;
-        private bool _isSolving;
-
-        public ICommand Example1Command { get; }
-        public ICommand Example2Command { get; }
-        public ICommand Example3Command { get; }
+        private ObservableCollection<CodeLine> _codeLines = new ObservableCollection<CodeLine>();
 
         public string EquationInput
         {
             get => _equationInput;
-            set => SetProperty(ref _equationInput, value, ValidateInputs);
+            set => SetProperty(ref _equationInput, value);
         }
 
         public SolverType SolverType
@@ -68,52 +67,16 @@ namespace SimDas.ViewModels
             private set => SetProperty(ref _isValid, value);
         }
 
-        public bool IsSolving
+        public ObservableCollection<CodeLine> CodeLines
         {
-            get => _isSolving;
-            set => SetProperty(ref _isSolving, value);
+            get => _codeLines;
+            set => SetProperty(ref _codeLines, value);
         }
 
         public InputViewModel(ILoggingService loggingService)
         {
             _loggingService = loggingService;
             _equationParser = new EquationParser(_loggingService);
-            SetExample_MSD();
-
-            Example1Command = new RelayCommand(SetExample_MSD);
-            Example2Command = new RelayCommand(SetExample_Robertson);
-            Example3Command = new RelayCommand(SetExample_Bioreactor);
-        }
-
-        private void SetExample_MSD()
-        {
-            // Mass-Spring-Damper example
-            EquationInput = "// Mass-Spring-Damper Example\r\nder(x) = v\r\nder(v) = (-k*x - c*v)/m";
-            ParameterInput = "k=2; c=0.5; m=1";
-            InitialValueInput = "x=1; v=0";
-            StartTime = 0;
-            EndTime = 10;
-        }
-
-        private void SetExample_Robertson()
-        {
-            // Robertson example
-            EquationInput = "// Robertson Example\r\nder(x)=-a*x+b*y*z\r\nder(y)=a*x-b*y*z-c*z*z\r\nz=1-x-y";
-            ParameterInput = "a=4e-2; b=1e4; c=3e7";
-            InitialValueInput = "x=1; y=0; z=0";
-            StartTime = 0;
-            EndTime = 100;
-        }
-
-        private void SetExample_Bioreactor()
-        {
-            // Bioreactor example
-            EquationInput = "// Bioreactorder Example\r\nder(x) = mu * s/(1+s) * x\r\nder(s) = -(1/Yx) * mu * s/(1+s) * x\r\nder(p) = alpha * mu * s/(1+s) * x + beta * x";
-            ParameterInput = "mu=0.2; Yx=0.5; alpha=2.0; beta=0.05";
-            InitialValueInput = "x=0.1; s=10; p=0";
-            StartTime = 0;
-            EndTime = 24;
-            SolverType = SolverType.ImplicitEuler;
         }
 
         private void ValidateInputs()

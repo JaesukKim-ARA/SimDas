@@ -6,13 +6,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:SimDas.ViewModels"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-             xmlns:Converters="clr-namespace:SimDas.Views.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type={x:Type viewModels:SolverSettingsViewModel}}">
-
-    <UserControl.Resources>
-        <Converters:SolverDescriptionConverter x:Key="SolverDescriptionConverter"/>
-    </UserControl.Resources>
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -25,42 +20,42 @@
         <GroupBox Grid.Row="0" Header="Basic Settings">
             <Grid Margin="5">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="30"/>
-                    <RowDefinition Height="30"/>
+                    <RowDefinition Height="30*"/>
+                    <RowDefinition Height="30*"/>
+                    <RowDefinition Height="10*"/>
+                    <RowDefinition Height="30*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="150*"/>
-                    <ColumnDefinition Width="350*"/>
+                    <ColumnDefinition Width="200*"/>
+                    <ColumnDefinition Width="200*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Solver Description -->
-                <ScrollViewer Grid.Row="0" Grid.Column="2" Margin="5,0" Grid.RowSpan="3">
-                    <TextBlock TextWrapping="Wrap">
-                        <Run FontWeight="Bold" Text="Current Solver Description:"/>
-                        <LineBreak/>
-                        <Run Text="{Binding SelectedSolverType, Converter={StaticResource SolverDescriptionConverter}, Mode=OneWay}"/>  
-                    </TextBlock>
-                </ScrollViewer>
-
                 <!-- Solver Type -->
-                <Label Grid.Column="0" 
-                       Content="Solver:" 
-                       VerticalAlignment="Center" Grid.RowSpan="1" Grid.ColumnSpan="1" Margin="0,0,0,0"/>
-                <ComboBox Grid.Row="0" Grid.Column="0"
-                          ItemsSource="{Binding AvailableSolvers}"
-                          SelectedItem="{Binding SelectedSolverType}"
-                          Margin="5,5,5,5" Grid.ColumnSpan="1"/>
-
+                <Label Grid.Row="0" Grid.Column="0" 
+                           Content="Selected Solver: " VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,0,0"/>
+                <ComboBox x:Name="SelectedSolverType"
+                              SelectionChanged="SelectedSolverType_SelectionChanged"
+                              Grid.Row="0" Grid.Column="1" 
+                              ItemsSource="{Binding AvailableSolvers}"
+                              SelectedItem="{Binding SelectedSolverType}"
+                              Margin="5,5,5,5" Grid.ColumnSpan="1"/>
                 <!-- Intervals -->
                 <Label Grid.Row="1" Grid.Column="0" 
-                       Content="Intervals:"
-                       VerticalAlignment="Center" HorizontalAlignment="Left" Grid.ColumnSpan="1" Margin="0,0,0,0"/>
-                <xctk:DoubleUpDown Grid.Row="1" Grid.Column="0"
+                           Content="Number of Intervals: " VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,0,0"/>
+                <xctk:DoubleUpDown Grid.Row="1" Grid.Column="1" 
                               Minimum="10"
                               Maximum="1000000"
                               Value="{Binding Intervals}"
                               Increment="1"
                               Margin="5,5,5,5" Grid.ColumnSpan="1"/>
+                
+                <!-- Solver Description -->
+                <Label Grid.Row="2" Grid.Column="0"
+                           Content="Solver Description: " FontWeight="Heavy" FontSize="16" Foreground="DimGray"/>
+                <RichTextBox x:Name="SolverDescription" 
+                            Grid.Row="3" Grid.Column="0" Margin="5" Grid.RowSpan="1" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Visible"
+                            IsReadOnly="True" MaxHeight="50">
+                </RichTextBox>
             </Grid>
         </GroupBox>
 

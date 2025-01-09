@@ -3,14 +3,13 @@
 namespace SimDas.Views
 {
     /// <summary>
-    /// Interaction logic for InputView.xaml
+    /// Interaction logic for SampleView.xaml
     /// </summary>
-    public partial class InputView : UserControl
+    public partial class SampleView : UserControl
     {
-        public InputView()
+        public SampleView()
         {
             InitializeComponent();
         }
     }
 }
-

@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UserControl x:Class="SimDas.Views.SampleView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:viewModels="clr-namespace:SimDas.ViewModels"
+             mc:Ignorable="d">
+
+    <GroupBox Header="Sample Equations" Margin="10,5">
+        <Grid Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100*"/>
+                <ColumnDefinition Width="100*"/>
+            </Grid.ColumnDefinitions>
+
+            <Label Grid.Column="0" 
+                   Content="Select Sample: " 
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Right"/>
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding SampleTypes}"
+                      SelectedItem="{Binding SelectedSampleType}"
+                      Margin="5"/>
+        </Grid>
+    </GroupBox>
+</UserControl>

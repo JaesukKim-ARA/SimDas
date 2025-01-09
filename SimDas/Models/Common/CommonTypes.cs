@@ -28,6 +28,12 @@ namespace SimDas.Models.Common
         }
     }
 
+    public class CodeLine
+    {
+        public string Text { get; set; }
+        public bool IsComment => Text.TrimStart().StartsWith("//") || Text.TrimStart().StartsWith("#");
+    }
+
     public class PlotSettings
     {
         public string Title { get; set; }
@@ -59,7 +65,6 @@ namespace SimDas.Models.Common
 
     public delegate double[] ODESystem(double t, double[] y);
     public delegate double[] DAESystem(double t, double[] y, double[] yprime);
-
     public class DAEEquation
     {
         public string Variable { get; set; }

@@ -1,7 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
 using Microsoft.Xaml.Behaviors;
 
 namespace SimDas.Models.Common
