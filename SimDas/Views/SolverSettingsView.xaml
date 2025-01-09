@@ -9,6 +9,7 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type={x:Type viewModels:SolverSettingsViewModel}}">
 
+    <ScrollViewer>
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -148,4 +149,5 @@
             <Run Text="• Advanced settings are only available for DASSL solver"/>
         </TextBlock>
     </Grid>
+    </ScrollViewer>
 </UserControl>

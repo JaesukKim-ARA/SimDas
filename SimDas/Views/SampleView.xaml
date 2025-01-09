@@ -5,7 +5,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:viewModels="clr-namespace:SimDas.ViewModels"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             MinHeight="80" Height="80">
 
     <GroupBox Header="Sample Equations" Margin="10,5">
         <Grid Margin="5">

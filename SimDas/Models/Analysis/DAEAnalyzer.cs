@@ -394,11 +394,6 @@ namespace SimDas.Models.Analysis
                 warnings.Add($"High index ({analysis.Index}) DAE detected. Consider index reduction.");
             }
 
-            if (analysis.IsStiff)
-            {
-                warnings.Add("Stiff system detected. Implicit solvers recommended.");
-            }
-
             int algebraicCount = analysis.AlgebraicVariables.Count(x => x);
             if (algebraicCount > 0)
             {
