@@ -7,7 +7,8 @@
              xmlns:viewModels="clr-namespace:SimDas.ViewModels"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type={x:Type viewModels:SolverSettingsViewModel}}">
+             d:DataContext="{d:DesignInstance Type={x:Type viewModels:SolverSettingsViewModel}}"
+             MinHeight="300" MaxHeight="400">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="10">
@@ -85,7 +86,7 @@
                                   Minimum="1e-15"
                                   Maximum="1e-3"
                                   Increment="1e-6"
-                                  FormatString="F10"
+                                  FormatString="E1"
                                   Margin="5"/>
 
                     <!-- Absolute Tolerance -->
@@ -97,7 +98,7 @@
                                   Minimum="1e-15"
                                   Maximum="1e-3"
                                   Increment="1e-8"
-                                  FormatString="F10"
+                                  FormatString="E1"
                                   Margin="5"/>
 
                     <!-- Max Order -->
@@ -131,7 +132,7 @@
                                   Minimum="1e-10"
                                   Maximum="1e-2"
                                   Increment="1e-4"
-                                  FormatString="F10"
+                                  FormatString="E1"
                                   Margin="5"/>
                 </Grid>
             </Expander>

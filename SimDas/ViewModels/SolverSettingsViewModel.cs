@@ -34,10 +34,7 @@ namespace SimDas.ViewModels
             set => SetProperty(ref _intervals, value);
         }
 
-        public Array AvailableSolvers => Enum.GetValues(typeof(SolverType))
-                                             .Cast<SolverType>()
-                                             .Where(solver => solver != SolverType.DASSL)
-                                             .ToArray();
+        public Array AvailableSolvers => Enum.GetValues(typeof(SolverType));
 
         public ISolver CreateSolver()
         {

@@ -183,7 +183,7 @@
 
             <!-- Left Panel - Logs -->
             <Grid Grid.Column="0">
-                <views:LogView DataContext="{Binding LogViewModel}"/>
+                <views:LogView DataContext="{Binding LogViewModel}" Background="MediumPurple"/>
             </Grid>
 
             <!-- Splitter -->
@@ -194,30 +194,30 @@
                          Background="LightGray"/>
 
             <!-- Middle Panel - Input and Settings -->
-            <Grid Grid.Column="2">
+            <Grid Grid.Column="2" Background="MediumPurple">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="200*"/>
+                    <RowDefinition Height="400*"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="30*"/>
+                    <RowDefinition Height="80*"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="100*"/>
+                    <RowDefinition Height="300*"/>
                 </Grid.RowDefinitions>
 
                 <views:InputView Grid.Row="0" 
                                 DataContext="{Binding InputViewModel}"/>
 
                 <GridSplitter Grid.Row="1" 
-                             Height="5" 
-                             HorizontalAlignment="Stretch" 
-                             Background="LightGray"/>
+                  Height="3"
+                  HorizontalAlignment="Stretch"
+                  Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
 
                 <views:SampleView Grid.Row="2"
                              DataContext="{Binding SampleViewModel}"/>
 
                 <GridSplitter Grid.Row="3" 
-                  Height="5" 
-                  HorizontalAlignment="Stretch" 
-                  Background="LightGray"/>
+                  Height="3"
+                  HorizontalAlignment="Stretch"
+                  Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
 
                 <views:SolverSettingsView Grid.Row="4" 
                              DataContext="{Binding SolverSettingsViewModel}"/>
@@ -232,7 +232,7 @@
 
             <!-- Right Panel - Results -->
             <views:ResultView Grid.Column="4" 
-                            DataContext="{Binding ResultViewModel}"/>
+                            DataContext="{Binding ResultViewModel}" Background="MediumPurple"/>
         </Grid>
 
         <!-- Status Bar -->

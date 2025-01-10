@@ -7,7 +7,8 @@
              xmlns:viewModels="clr-namespace:SimDas.ViewModels"
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
              xmlns:local="clr-namespace:SimDas.Models.Common"
-             xmlns:i="http://schemas.microsoft.com/xaml/behaviors">
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             MinHeight="400" MaxHeight="1000">
     
     <Grid Margin="10">
         <Grid.RowDefinitions>

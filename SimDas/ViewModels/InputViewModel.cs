@@ -24,10 +24,18 @@ namespace SimDas.ViewModels
         private double _endTime = 10.0;
         private bool _isValid;
 
+        public event EventHandler InputChanged;
+
         public string EquationInput
         {
             get => _equationInput;
-            set => SetProperty(ref _equationInput, value);
+            set
+            {
+                if (SetProperty(ref _equationInput, value))
+                {
+                    InputChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
 
         public SolverType SolverType
@@ -39,13 +47,25 @@ namespace SimDas.ViewModels
         public string ParameterInput
         {
             get => _parameterInput;
-            set => SetProperty(ref _parameterInput, value, ValidateInputs);
+            set
+            {
+                if (SetProperty(ref _parameterInput, value, ValidateInputs))
+                {
+                    InputChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
 
         public string InitialValueInput
         {
             get => _initialValueInput;
-            set => SetProperty(ref _initialValueInput, value, ValidateInputs);
+            set
+            {
+                if (SetProperty(ref _initialValueInput, value, ValidateInputs))
+                {
+                    InputChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
 
         public double StartTime

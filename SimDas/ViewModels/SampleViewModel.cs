@@ -7,6 +7,8 @@ namespace SimDas.ViewModels
     public class SampleViewModel : ViewModelBase
     {
         private readonly InputViewModel _inputViewModel;
+        private bool _isUpdatingFromSample = false;
+        private bool _isUserSelectingManual = false;
 
         public enum SampleEquationType
         {
@@ -25,7 +27,11 @@ namespace SimDas.ViewModels
             {
                 if (SetProperty(ref _selectedSampleType, value))
                 {
-                    ApplySampleEquation();
+                    if (!_isUserSelectingManual)  // 사용자 입력에 의한 Manual 전환이 아닐 때만
+                    {
+                        _isUserSelectingManual = value == SampleEquationType.Manual;
+                        ApplySampleEquation();
+                    }
                 }
             }
         }
@@ -35,24 +41,47 @@ namespace SimDas.ViewModels
         public SampleViewModel(InputViewModel inputViewModel)
         {
             _inputViewModel = inputViewModel;
+            _inputViewModel.InputChanged += InputViewModel_InputChanged;
+        }
+
+        private void InputViewModel_InputChanged(object sender, EventArgs e)
+        {
+            if (!_isUpdatingFromSample && _selectedSampleType != SampleEquationType.Manual)
+            {
+                _isUserSelectingManual = true;  // 사용자 입력에 의한 Manual 전환임을 표시
+                SelectedSampleType = SampleEquationType.Manual;
+                _isUserSelectingManual = false;  // 플래그 초기화
+            }
         }
 
         private void ApplySampleEquation()
         {
-            switch (SelectedSampleType)
+            _isUpdatingFromSample = true;
+            try
             {
-                case SampleEquationType.Manual:
-                    _inputViewModel.Clear();
-                    break;
-                case SampleEquationType.MassSpringDamper:
-                    ApplyMSDExample();
-                    break;
-                case SampleEquationType.Robertson:
-                    ApplyRobertsonExample();
-                    break;
-                case SampleEquationType.Bioreactor:
-                    ApplyBioreactorExample();
-                    break;
+                switch (SelectedSampleType)
+                {
+                    case SampleEquationType.Manual:
+                        if (_isUserSelectingManual)
+                        {
+                            _inputViewModel.Clear();
+                        }
+                        break;
+                    case SampleEquationType.MassSpringDamper:
+                        ApplyMSDExample();
+                        break;
+                    case SampleEquationType.Robertson:
+                        ApplyRobertsonExample();
+                        break;
+                    case SampleEquationType.Bioreactor:
+                        ApplyBioreactorExample();
+                        break;
+                }
+            }
+            finally
+            {
+                _isUpdatingFromSample = false;
+                _isUserSelectingManual = false;  // 플래그 초기화
             }
         }
 
