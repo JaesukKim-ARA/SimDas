@@ -252,6 +252,18 @@ namespace SimDas.Parser
             output.Push(result);
         }
 
+        public void AddConstant(string name, double value)
+        {
+            if (_parameters.ContainsKey(name))
+            {
+                _parameters[name] = value;
+            }
+            else
+            {
+                _parameters.Add(name, value);
+            }
+        }
+
         public Dictionary<string, int> GetVariables()
         {
             return new Dictionary<string, int>(_variables);

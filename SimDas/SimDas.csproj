@@ -113,7 +113,6 @@
     <PackageReference Include="ScottPlot.WPF">
       <Version>5.0.51</Version>
     </PackageReference>
-    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.116.1" />
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
@@ -158,7 +157,7 @@
 	    <Page Include="Views\LogView.xaml" />
 	    <Page Include="Views\MainWindow.xaml" />
 	    <Page Include="Views\ResultView.xaml" />
-		<Page Include="Views\SampleView.xaml"/>
+		<Page Include="Views\SampleView.xaml" />
 	    <Page Include="Views\SolverSettingsView.xaml" />
     </ItemGroup>
   <ItemGroup>

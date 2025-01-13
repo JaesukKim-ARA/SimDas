@@ -9,7 +9,7 @@
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:local="clr-namespace:SimDas.Models.Common"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type={x:Type vm:ResultViewModel}}">
+             d:DataContext="{d:DesignInstance Type={x:Type vm:ResultViewModel}} ">
     
     <Grid ClipToBounds="False">
         <Grid x:Name="MainGrid" >
@@ -23,12 +23,12 @@
             <!-- 도구 모음 -->
             <StackPanel Grid.Row="0" 
                       Orientation="Horizontal"
-                      Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+                      Background="{DynamicResource PrimaryBrush}">
                 <!-- 그래프 저장 -->
                 <Button Margin="5" 
                         Padding="5,2"
                         Command="{Binding SavePlotCommand}"
-                        IsEnabled="{Binding HasResults}">
+                        IsEnabled="{Binding HasResults}" Opacity="0.475">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="/Resources/chart.png" 
                                Width="16" Height="16" 
@@ -42,7 +42,7 @@
                 <Button Margin="5" 
                         Padding="5,2"
                         Command="{Binding ClearCommand}"
-                        IsEnabled="{Binding HasResults}">
+                        IsEnabled="{Binding HasResults}" Opacity="0.48">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="/Resources/refresh.png" 
                                Width="16" Height="16" 
@@ -56,7 +56,7 @@
                 <Button Margin="5" 
                     Padding="5,2"
                     Command="{Binding ToggleAnalysisCommand}"
-                    IsEnabled="{Binding HasResults}">
+                    IsEnabled="{Binding HasResults}" Opacity="0.5">
                     <StackPanel Orientation="Horizontal">
                         <Image Source="/Resources/show.png" 
                                Width="16" Height="16" 
@@ -85,8 +85,7 @@
                                 Grid.ColumnSpan="2"
                                 Margin="5"
                                 MinHeight="200"
-                                Content="{Binding StatesPlotControl}" >
-                </ContentControl>
+                                Content="{Binding StatesPlotControl}"/>
 
                 <!-- 선택된 시간 표시 -->
                 <TextBox x:Name="SelectedTime"
@@ -132,8 +131,7 @@
                                 Grid.ColumnSpan="2"
                                 Margin="5"
                                 MinHeight="200"
-                                Content="{Binding DerivativesPlotControl}"
-                />
+                                Content="{Binding DerivativesPlotControl}"/>
             </Grid>
             <!-- Plot Splitter -->
             <GridSplitter x:Name="PlotSplitter"
@@ -146,7 +144,7 @@
             <Grid x:Name="LogPanelGrid"
                 Grid.Row="3"
                 Margin="5,2"
-                Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+                Background="{DynamicResource PrimaryBrush}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -163,7 +161,7 @@
                         Grid.Column="1" Grid.Row="0"
                         Width="100" Height="20"
                         Margin="5,2"
-                        SelectedIndex="{Binding DisplayFormat}">
+                        SelectedIndex="{Binding DisplayFormat}" Opacity="0.5">
                         <ComboBoxItem Content="General"/>
                         <ComboBoxItem Content="Exponential"/>
                         <ComboBoxItem Content="Fixed-Point"/>
@@ -172,7 +170,7 @@
                     <Button Margin="5" 
                         Padding="5,2"
                         Command="{Binding ExportToCsvCommand}"
-                        IsEnabled="{Binding HasResults}">
+                        IsEnabled="{Binding HasResults}" Opacity="0.5">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Resources/csv.png" 
                                Width="16" Height="16" 
@@ -186,7 +184,7 @@
                     <Button Margin="5" 
                         Padding="5,2"
                         Command="{Binding CopyToClipboardCommand}"
-                        IsEnabled="{Binding HasResults}">
+                        IsEnabled="{Binding HasResults}" Opacity="0.5">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Resources/copy.png" 
                                Width="16" Height="16" 
@@ -203,7 +201,7 @@
                     Grid.ColumnSpan="3"
                     BorderThickness="1" 
                     BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
-                    Margin="5,0,5,5">
+                    Margin="5,0,5,5" Opacity="0.5">
                     <ScrollViewer x:Name="LogScrollviewer"
                         HorizontalScrollBarVisibility="Auto" 
                         VerticalScrollBarVisibility="Auto">
@@ -246,32 +244,210 @@
                 </StackPanel>
             </Border>
         </Grid>
-        
-        <Popup x:Name="AnalysisPopup" IsOpen="{Binding ShowAnalysis}" Placement="Center"
-           AllowsTransparency="True"
-           HorizontalOffset="{Binding AnalysisPopupPosition.X}"
-           VerticalOffset="{Binding AnalysisPopupPosition.Y}"
-           FocusManager.IsFocusScope="True" Focusable="True" StaysOpen="False">
-            <Border Background="White" BorderBrush="Black" BorderThickness="1">
+
+        <Popup x:Name="AnalysisPopup" IsOpen="{Binding ShowAnalysis}" 
+               Placement="Center" AllowsTransparency="True"
+               HorizontalOffset="{Binding AnalysisPopupPosition.X}"
+               VerticalOffset="{Binding AnalysisPopupPosition.Y}"
+               FocusManager.IsFocusScope="True" Focusable="True" StaysOpen="False">
+            <Border Background="White" 
+                    BorderBrush="#FF444444" 
+                    BorderThickness="1" 
+                    Width="{Binding PopupWidth, Converter={StaticResource MinWidthConverter}}" 
+                    Height="{Binding PopupHeight, Converter={StaticResource MinHeightConverter}}"
+                    Effect="{StaticResource PopupShadowEffect}">
                 <Grid>
-                    <Button x:Name="PopupCloseButton" Panel.ZIndex="1" Content="X" HorizontalAlignment="Right" VerticalAlignment="Top" 
-                    Width="20" Height="20" Margin="5"
-                    Command="{Binding CloseAnalysisCommand}" />
-                    <StackPanel x:Name="PopupPanel">
-                        <Border x:Name="PopupTitle" Background="#FFDDDDDD" Padding="5">
-                            <TextBlock Text="System Analysis" FontWeight="Bold">
-                        <i:Interaction.Behaviors>
-                            <local:DraggablePopupBehavior ParentPopup="{Binding ElementName=AnalysisPopup}"
-                                                          Position="{Binding AnalysisPopupPosition}" />
-                        </i:Interaction.Behaviors>
-                            </TextBlock>
-                        </Border>
-                        <TextBox x:Name="PopupContent"  Text="{Binding SystemAnalysis}" Margin="5"
-                         IsReadOnly="True" AcceptsReturn="True"
-                         VerticalScrollBarVisibility="Auto"
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 헤더 -->
+                    <Border Grid.Row="0" Background="#FF444444" Padding="10,5">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal"
+                              Margin="0,0,10,0">
+                                <Image Source="/Resources/chart.png" 
+                               Width="16" Height="16" 
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <TextBlock Text="System Analysis" 
+                                 Foreground="White" 
+                                 FontWeight="Bold" 
+                                 Margin="5,0,0,0">
+                            <i:Interaction.Behaviors>
+                                <local:DraggablePopupBehavior 
+                                    ParentPopup="{Binding ElementName=AnalysisPopup}"
+                                    Position="{Binding AnalysisPopupPosition}" />
+                            </i:Interaction.Behaviors>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <!-- 제어 버튼들 -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button Command="{Binding ExportAnalysisCommand}"
+                                Style="{StaticResource PopupHeaderButtonStyle}"
+                                ToolTip="Export Analysis">
+                                    <Image Source="/Resources/save.png" 
+                                   Width="12" Height="12"/>
+                                </Button>
+                                <Button Command="{Binding CloseAnalysisCommand}"
+                                Style="{StaticResource PopupHeaderButtonStyle}"
+                                ToolTip="Close">
+                                    <Path Data="M 0,0 L 8,8 M 0,8 L 8,0" 
+                                  Stroke="White" StrokeThickness="2"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- 내용 -->
+                    <ScrollViewer Grid.Row="1" 
+                         VerticalScrollBarVisibility="Auto" 
                          HorizontalScrollBarVisibility="Auto"
-                         TextWrapping="Wrap" />
-                    </StackPanel>
+                         Margin="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 시스템 요약 -->
+                            <GroupBox Grid.Row="0" Header="System Overview" Style="{StaticResource AnalysisGroupBoxStyle}">
+                                <StackPanel>
+                                    <Grid Margin="5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="3*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Variable Count:" Style="{StaticResource AnalysisLabelStyle}"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Value}" Style="{StaticResource AnalysisValueStyle}"/>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="DAE Index:"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" 
+                                         Text="{Binding CurrentAnalysis.Index}"/>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Structure:"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" 
+                                         Text="{Binding HasAlgebraicLoop, 
+                                         Converter={StaticResource BooleanToAlgebraicLoopConverter}}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- 수치적 특성 -->
+                            <GroupBox Grid.Row="1" Header="Numerical Properties" Margin="0,5">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Condition Number:"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" 
+                                     Text="{Binding ConditionNumber, StringFormat=E3}"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Stiffness Ratio:"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" 
+                                     Text="{Binding StiffnessRatio, StringFormat=E3}"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Is Stiff:"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" 
+                                     Text="{Binding CurrentAnalysis.IsStiff}"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- 블록 분석 -->
+                            <GroupBox Grid.Row="2" Header="Block Analysis" Margin="0,5">
+                                <ItemsControl ItemsSource="{Binding BlockInfos}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Expander Header="{Binding BlockType, StringFormat='Block {0} ({1})'}" Style="{StaticResource AnalysisExpanderStyle}">
+                                                <Grid Margin="10,5">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Grid.Row="0" 
+                                                     Text="{Binding Variables, 
+                                                     Converter={StaticResource VariableListConverter}}"/>
+
+                                                    <TextBlock Grid.Row="1" 
+                                                     Text="{Binding ConditionNumber, 
+                                                     StringFormat='Condition Number: {0:E3}'}"/>
+
+                                                    <HeaderedItemsControl Grid.Row="2" 
+                                                        ItemsSource="{Binding Eigenvalues}">
+                                                        <HeaderedItemsControl.HeaderTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="Eigenvalues:"
+                                                                 Margin="0,5,0,0"/>
+                                                            </DataTemplate>
+                                                        </HeaderedItemsControl.HeaderTemplate>
+                                                        <HeaderedItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding}" 
+                                                                 Margin="10,0,0,0"/>
+                                                            </DataTemplate>
+                                                        </HeaderedItemsControl.ItemTemplate>
+                                                    </HeaderedItemsControl>
+                                                </Grid>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </GroupBox>
+
+                            <!-- 경고 메시지 -->
+                            <GroupBox Grid.Row="3" Header="Warnings" Margin="0,5"
+                             Visibility="{Binding HasWarnings, 
+                             Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ItemsControl ItemsSource="{Binding SystemWarnings}"
+                                    Margin="5">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Style="{StaticResource WarningTextStyle}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </GroupBox>
+                        </Grid>
+                    </ScrollViewer>
+                    <!-- 크기 조절 핸들 -->
+                    <Rectangle Grid.Row="2" 
+                      Width="16" Height="16" 
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Bottom"
+                      Fill="Transparent"
+                      Cursor="SizeNWSE">
+                        <i:Interaction.Behaviors>
+                            <local:ResizeBehavior 
+                                StartResizeCommand="{Binding StartResizeCommand}"
+                                ResizeCommand="{Binding ResizeCommand}"
+                                EndResizeCommand="{Binding EndResizeCommand}"/>
+                        </i:Interaction.Behaviors>
+                    </Rectangle>
                 </Grid>
             </Border>
         </Popup>

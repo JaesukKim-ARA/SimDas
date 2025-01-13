@@ -8,5 +8,84 @@
         <Converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <Converters:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter"/>
         <Converters:SolverDescriptionConverter x:Key="SolverDescriptionConverter"/>
+        <Converters:VariableListConverter x:Key="VariableListConverter"/>
+        <Converters:BooleanToAlgebraicLoopConverter x:Key="BooleanToAlgebraicLoopConverter"/>
+        <Converters:MinWidthConverter x:Key="MinWidthConverter"/>
+        <Converters:MinHeightConverter x:Key="MinHeightConverter"/>
+
+        <!-- Analysis Window Styles -->
+        <Style x:Key="AnalysisGroupBoxStyle" TargetType="GroupBox">
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+        </Style>
+
+        <Style x:Key="AnalysisLabelStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="AnalysisValueStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="5,2"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="AnalysisExpanderStyle" TargetType="Expander">
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style x:Key="WarningTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Red"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+
+        <!-- 팝업 그림자 효과 -->
+        <DropShadowEffect x:Key="PopupShadowEffect"
+                      ShadowDepth="3"
+                      Direction="315"
+                      Color="Black"
+                      Opacity="0.3"
+                      BlurRadius="5"/>
+
+        <!-- 팝업 헤더 버튼 스타일 -->
+        <Style x:Key="PopupHeaderButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                        VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#44FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- 기본 색상 정의 -->
+        <Color x:Key="PrimaryColor">#FF6200EE</Color>
+        <Color x:Key="SecondaryColor">#FF03DAC5</Color>
+        <Color x:Key="BackgroundColor">#FFFFFFFF</Color>
+
+        <!-- 브러시 정의 -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
+        <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}" />
+        <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}" />
     </Application.Resources>
 </Application>

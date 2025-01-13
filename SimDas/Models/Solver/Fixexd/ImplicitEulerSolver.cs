@@ -3,14 +3,13 @@ using SimDas.Models.Solver.Base;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SimDas.Models.Solver.Fixed
 {
     public class ImplicitEulerSolver : SolverBase
     {
-        private const int MAX_ITERATIONS = 100;
-        private const double TOLERANCE = 1e-6;
-
         public ImplicitEulerSolver() : base("Implicit Euler")
         {
         }
@@ -40,7 +39,9 @@ namespace SimDas.Models.Solver.Fixed
                 solution.LogStep(currentTime, currentState, currentDerivatives);
 
                 // 다음 상태 계산
-                (currentState, currentDerivatives) = await SolveNextStateAsync(currentState, currentDerivatives, currentTime, dt, cancellationToken);
+                (currentState, currentDerivatives) = await SolveImplicitStepAsync(
+                    currentState, currentDerivatives, currentTime, dt, cancellationToken);
+
                 currentTime += dt;
 
                 RaiseProgressChanged(currentTime, EndTime,
@@ -52,150 +53,54 @@ namespace SimDas.Models.Solver.Fixed
             return solution;
         }
 
-        private async Task<(double[], double[])> SolveNextStateAsync(
+        private async Task<(double[] state, double[] derivatives)> SolveImplicitStepAsync(
             double[] currentState,
             double[] currentDerivatives,
             double time,
             double dt,
             CancellationToken cancellationToken)
         {
-            double[] nextState = (double[])currentState.Clone();
-            double[] nextDerivatives = (double[])currentDerivatives.Clone();
-            var baseResiduals = DAESystem(time, currentState, currentDerivatives);
+            var nextState = (double[])currentState.Clone();
+            var nextDerivatives = (double[])currentDerivatives.Clone();
 
             // 초기 추정값 계산
+            var baseResiduals = DAESystem(time, currentState, currentDerivatives);
             for (int i = 0; i < Dimension; i++)
             {
-                nextDerivatives[i] -= baseResiduals[i];
-                nextState[i] += dt * nextDerivatives[i];
+                if (!_isAlgebraic[i])
+                {
+                    nextDerivatives[i] -= baseResiduals[i];
+                    nextState[i] += dt * nextDerivatives[i];
+                }
             }
 
-            // Newton-Raphson 반복
-            for (int iter = 0; iter < MAX_ITERATIONS; iter++)
+            // 전체 시스템에 대한 Newton 반복
+            int[] allIndices = Enumerable.Range(0, Dimension).ToArray();
+            for (int iter = 0; iter < MAX_NEWTON_ITERATIONS; iter++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                var residuals = DAESystem(time + dt, nextState, nextDerivatives);
+                double error = residuals.Select(Math.Abs).Max();
 
-                double[] residuals = DAESystem(time + dt, nextState, nextDerivatives);
-                double normRes = CalculateNorm(residuals);
-
-                if (normRes < TOLERANCE)
+                if (error < TOLERANCE)
                     break;
 
-                double[,] J = await CalculateJacobianAsync(nextState, nextDerivatives, time + dt, dt, cancellationToken);
-                double[] delta = SolveLinearSystem(J, residuals);
+                var J = await CalculateJacobianAsync(nextState, nextDerivatives, time + dt, allIndices, cancellationToken);
+                var delta = SolveLinearSystem(J, residuals.Select(r => -r).ToArray());
 
-                // 해 및 도함수 갱신
+                // 해 갱신
                 for (int i = 0; i < Dimension; i++)
                 {
-                    nextState[i] -= delta[i];
-                    nextDerivatives[i] -= residuals[i];
+                    nextState[i] += delta[i];
+                    if (!_isAlgebraic[i])
+                    {
+                        nextDerivatives[i] = (nextState[i] - currentState[i]) / dt;
+                    }
                 }
 
                 await Task.Yield();
             }
 
             return (nextState, nextDerivatives);
-        }
-
-        private async Task<double[,]> CalculateJacobianAsync(
-            double[] state, double[] derivatives, double time, double dt, CancellationToken cancellationToken)
-        {
-            double[,] J = new double[Dimension, Dimension];
-            double eps = Math.Sqrt(TOLERANCE);
-
-            double[] baseRes = DAESystem(time, state, derivatives);
-
-            for (int i = 0; i < Dimension; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // ∂F/∂y 계산
-                double[] perturbedState = (double[])state.Clone();
-                perturbedState[i] += eps;
-                double[] res1 = DAESystem(time, perturbedState, derivatives);
-
-                // ∂F/∂y' 계산
-                double[] perturbedDerivatives = (double[])derivatives.Clone();
-                perturbedDerivatives[i] += eps;
-                double[] res2 = DAESystem(time, state, perturbedDerivatives);
-
-                for (int j = 0; j < Dimension; j++)
-                {
-                    double dFdy = (res1[j] - baseRes[j]) / eps;
-                    double dFdyp = (res2[j] - baseRes[j]) / eps;
-                    J[j, i] = dFdy + dFdyp / dt;
-                }
-
-                await Task.Yield();
-            }
-
-            return J;
-        }
-
-        private double CalculateNorm(double[] vector)
-        {
-            double sum = 0;
-            for (int i = 0; i < vector.Length; i++)
-            {
-                sum += vector[i] * vector[i];
-            }
-            return Math.Sqrt(sum / vector.Length);
-        }
-
-        private double[] SolveLinearSystem(double[,] A, double[] b)
-        {
-            int n = b.Length;
-            double[] x = new double[n];
-
-            // Gaussian elimination with partial pivoting
-            for (int k = 0; k < n - 1; k++)
-            {
-                // Pivot selection
-                int maxIndex = k;
-                double maxValue = Math.Abs(A[k, k]);
-                for (int i = k + 1; i < n; i++)
-                {
-                    if (Math.Abs(A[i, k]) > maxValue)
-                    {
-                        maxValue = Math.Abs(A[i, k]);
-                        maxIndex = i;
-                    }
-                }
-
-                if (maxIndex != k)
-                {
-                    // Swap rows
-                    for (int j = k; j < n; j++)
-                    {
-                        (A[k, j], A[maxIndex, j]) = (A[maxIndex, j], A[k, j]);
-                    }
-                    (b[k], b[maxIndex]) = (b[maxIndex], b[k]);
-                }
-
-                // Elimination
-                for (int i = k + 1; i < n; i++)
-                {
-                    double factor = A[i, k] / A[k, k];
-                    for (int j = k; j < n; j++)
-                    {
-                        A[i, j] -= factor * A[k, j];
-                    }
-                    b[i] -= factor * b[k];
-                }
-            }
-
-            // Back substitution
-            for (int i = n - 1; i >= 0; i--)
-            {
-                double sum = b[i];
-                for (int j = i + 1; j < n; j++)
-                {
-                    sum -= A[i, j] * x[j];
-                }
-                x[i] = sum / A[i, i];
-            }
-
-            return x;
         }
     }
 }

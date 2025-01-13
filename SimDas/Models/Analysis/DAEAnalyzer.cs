@@ -40,14 +40,17 @@ namespace SimDas.Models.Analysis
 
             try
             {
+                // 대수-미분 변수 식별
+                IdentifyVariableTypes(system, initialState, initialTime, analysis);
+
                 // 의존성 분석
                 AnalyzeDependencies(system, initialState, dimension, analysis);
 
-                // 대수 변수 식별
-                IdentifyAlgebraicVariables(system, initialState, initialTime, analysis);
+                // 구조적 특성 분석
+                AnalyzeSystemStructure(system, initialState, initialTime, analysis);
 
                 // Index 분석
-                analysis.Index = DetermineIndex(system, initialState, initialTime, analysis.AlgebraicVariables, analysis);
+                analysis.Index = DetermineIndex(system, initialState, initialTime, analysis);
 
                 // Jacobian 계산
                 var jacobian = CalculateJacobian(system, initialState, new double[dimension], initialTime);
@@ -72,6 +75,9 @@ namespace SimDas.Models.Analysis
                         analysis.StiffnessRatio = negativeEigenvalues.Max() / negativeEigenvalues.Min();
                     }
                 }
+
+                // 블록 구조 분석
+                AnalyzeBlockStructure(analysis);
 
                 // 경고 메시지 생성
                 GenerateWarnings(analysis);
@@ -105,20 +111,27 @@ namespace SimDas.Models.Analysis
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // 변수 의존성 분석
+                // 대수-미분 변수 식별
+                await IdentifyVariableTypesAsync(system, initialState, initialTime, analysis);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // 의존성 분석
                 await AnalyzeDependenciesAsync(system, initialState, dimension, analysis);
 
-                // 대수 변수 식별
-                await IdentifyAlgebraicVariablesAsync(system, initialState, initialTime, analysis);
-
                 cancellationToken.ThrowIfCancellationRequested();
+
+                // 구조적 특성 분석
+                await AnalyzeSystemStructureAsync(system, initialState, initialTime, analysis, cancellationToken);
+
                 // Index 분석
-                analysis.Index = await DetermineIndexAsync(system, initialState, initialTime, analysis.AlgebraicVariables, analysis);
-
+                analysis.Index = await DetermineIndexAsync(system, initialState, initialTime, analysis);
 
                 cancellationToken.ThrowIfCancellationRequested();
+
                 // Jacobian 계산
-                var jacobian = await CalculateJacobianParallelAsync(system, initialState, new double[dimension], initialTime);
+                var jacobian = await CalculateJacobianParallelAsync(
+                    system, initialState, new double[dimension], initialTime, cancellationToken);
 
                 // 조건수 계산
                 analysis.ConditionNumber = CalculateConditionNumber(jacobian);
@@ -139,6 +152,9 @@ namespace SimDas.Models.Analysis
                         analysis.StiffnessRatio = negativeEigenvalues.Max() / negativeEigenvalues.Min();
                     }
                 }
+
+                // 블록 구조 분석
+                await AnalyzeBlockStructureAsync(analysis, cancellationToken);
 
                 // 경고 메시지 생성
                 GenerateWarnings(analysis);
@@ -254,7 +270,11 @@ namespace SimDas.Models.Analysis
             currentPath.Remove(currentVar);
         }
 
-        private void IdentifyAlgebraicVariables(DAESystem system, double[] state, double time, DAEAnalysis analysis)
+        private void IdentifyVariableTypes(
+            DAESystem system,
+            double[] state,
+            double time,
+            DAEAnalysis analysis)
         {
             // 초기화 - 기본값을 false로 변경 (미분 변수로 가정)
             for (int i = 0; i < state.Length; i++)
@@ -283,11 +303,22 @@ namespace SimDas.Models.Analysis
                 if (sensitivity < PERTURBATION)
                 {
                     analysis.AlgebraicVariables[i] = true;
+                    lock (analysis.SystemStructure.AlgebraicEquations)
+                    {
+                        analysis.SystemStructure.AlgebraicEquations.Add(i);
+                    }
+                }
+                else
+                {
+                    lock (analysis.SystemStructure.DifferentialEquations)
+                    {
+                        analysis.SystemStructure.DifferentialEquations.Add(i);
+                    }
                 }
             });
         }
 
-        private async Task IdentifyAlgebraicVariablesAsync(
+        private async Task IdentifyVariableTypesAsync(
             DAESystem system,
             double[] state,
             double time,
@@ -295,20 +326,24 @@ namespace SimDas.Models.Analysis
         {
             await Task.Run(() =>
             {
-                IdentifyAlgebraicVariables(system, state, time, analysis);
+                IdentifyVariableTypes(system, state, time, analysis);
             });
         }
 
-        private int DetermineIndex(DAESystem system, double[] state, double time, bool[] algebraicVars, DAEAnalysis analysis)
+        private int DetermineIndex(
+            DAESystem system,
+            double[] state,
+            double time,
+            DAEAnalysis analysis)
         {
             int index = 1;
-            double[] derivatives = new double[state.Length];
-            bool[] currentAlgebraic = (bool[])algebraicVars.Clone();
+            var currentAlgebraic = (bool[])analysis.AlgebraicVariables.Clone();
 
             while (currentAlgebraic.Any(x => x) && index < 4)
             {
                 bool[] nextAlgebraic = new bool[state.Length];
-                double[] baseResiduals = system(time, state, derivatives);
+                double[] derivatives = new double[state.Length];
+                var baseResiduals = system(time, state, derivatives);
 
                 bool foundDependency = false;
                 for (int i = 0; i < state.Length; i++)
@@ -339,13 +374,64 @@ namespace SimDas.Models.Analysis
             DAESystem system,
             double[] state,
             double time,
-            bool[] algebraicVars,
-            DAEAnalysis analysis)  // analysis 매개변수 추가
+            DAEAnalysis analysis)
         {
-            return await Task.Run(() =>
+            return await Task.Run(() => DetermineIndex(system, state, time, analysis));
+        }
+
+        private void AnalyzeSystemStructure(
+            DAESystem system,
+            double[] state,
+            double time,
+            DAEAnalysis analysis)
+        {
+            var structure = analysis.SystemStructure;
+
+            // 블록 구조 식별
+            var blocks = IdentifyBlocks(analysis.VariableDependencies);
+            structure.Blocks = blocks;
+
+            // 각 블록의 특성 분석
+            foreach (var block in blocks)
             {
-                return DetermineIndex(system, state, time, algebraicVars, analysis);  // analysis 전달
-            });
+                if (block.Count == 1)
+                {
+                    structure.SingleEquations.Add(block.First());
+                }
+                else
+                {
+                    var blockType = DetermineBlockType(block, analysis.AlgebraicVariables);
+                    switch (blockType)
+                    {
+                        case BlockType.PureAlgebraic:
+                            structure.AlgebraicBlocks.Add(block);
+                            break;
+                        case BlockType.PureDifferential:
+                            structure.DifferentialBlocks.Add(block);
+                            break;
+                        case BlockType.Mixed:
+                            structure.MixedBlocks.Add(block);
+                            break;
+                    }
+                }
+            }
+
+            // 추가적인 구조적 특성 분석
+            structure.IsFullyCoupled = blocks.Count == 1 && blocks[0].Count == state.Length;
+            structure.HasAlgebraicLoop = structure.AlgebraicBlocks.Any() || structure.MixedBlocks.Any();
+        }
+
+        private async Task AnalyzeSystemStructureAsync(
+            DAESystem system,
+            double[] state,
+            double time,
+            DAEAnalysis analysis,
+            CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                AnalyzeSystemStructure(system, state, time, analysis);
+            }, cancellationToken);
         }
 
         private bool CheckStiffness(DAESystem system, double[] state, double time)
@@ -419,6 +505,18 @@ namespace SimDas.Models.Analysis
                 }
             }
 
+            // 조건수 관련 경고
+            if (analysis.ConditionNumber > 1e6)
+            {
+                warnings.Add($"System is ill-conditioned (condition number: {analysis.ConditionNumber:E2})");
+            }
+
+            // Stiffness 관련 경고
+            if (analysis.IsStiff)
+            {
+                warnings.Add($"System is stiff (stiffness ratio: {analysis.StiffnessRatio:E2})");
+            }
+
             analysis.Warnings = warnings.ToArray();
         }
 
@@ -480,7 +578,11 @@ namespace SimDas.Models.Analysis
             return components;
         }
 
-        private double[,] CalculateJacobian(DAESystem system, double[] state, double[] derivatives, double time)
+        private double[,] CalculateJacobian(
+            DAESystem system,
+            double[] state,
+            double[] derivatives,
+            double time)
         {
             int n = state.Length;
             var jacobian = new double[n, n];
@@ -669,6 +771,109 @@ namespace SimDas.Models.Analysis
             });
 
             _loggingService.Debug($"{stage}: {percentage:F1}% - {message}");
+        }
+
+        private enum BlockType
+        {
+            PureAlgebraic,
+            PureDifferential,
+            Mixed
+        }
+
+        private BlockType DetermineBlockType(HashSet<int> block, bool[] algebraicVars)
+        {
+            bool hasAlgebraic = false;
+            bool hasDifferential = false;
+
+            foreach (var idx in block)
+            {
+                if (algebraicVars[idx])
+                    hasAlgebraic = true;
+                else
+                    hasDifferential = true;
+
+                if (hasAlgebraic && hasDifferential)
+                    return BlockType.Mixed;
+            }
+
+            return hasAlgebraic ? BlockType.PureAlgebraic : BlockType.PureDifferential;
+        }
+
+        private List<HashSet<int>> IdentifyBlocks(Dictionary<int, HashSet<int>> dependencies)
+        {
+            return FindStronglyConnectedComponents(dependencies);
+        }
+
+        private void AnalyzeBlockStructure(DAEAnalysis analysis)
+        {
+            foreach (var block in analysis.SystemStructure.Blocks)
+            {
+                if (block.Count > 1)
+                {
+                    // 블록에 대한 부분 Jacobian 추출
+                    var subJacobian = ExtractSubJacobian(block, analysis);
+
+                    var blockAnalysis = new BlockAnalysis
+                    {
+                        Variables = block.ToList(),
+                        ConditionNumber = CalculateConditionNumber(subJacobian),
+                        Eigenvalues = CalculateEigenvalues(subJacobian)
+                    };
+
+                    analysis.SystemStructure.BlockAnalyses.Add(blockAnalysis);
+                }
+            }
+        }
+
+        private async Task AnalyzeBlockStructureAsync(
+            DAEAnalysis analysis,
+            CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                foreach (var block in analysis.SystemStructure.Blocks)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (block.Count > 1)
+                    {
+                        var subJacobian = ExtractSubJacobian(block, analysis);
+
+                        var blockAnalysis = new BlockAnalysis
+                        {
+                            Variables = block.ToList(),
+                            ConditionNumber = CalculateConditionNumber(subJacobian),
+                            Eigenvalues = CalculateEigenvalues(subJacobian)
+                        };
+
+                        analysis.SystemStructure.BlockAnalyses.Add(blockAnalysis);
+                    }
+                }
+            }, cancellationToken);
+        }
+
+        private double[,] ExtractSubJacobian(HashSet<int> block, DAEAnalysis analysis)
+        {
+            var blockSize = block.Count;
+            var subJacobian = new double[blockSize, blockSize];
+            var blockList = block.ToList();
+
+            for (int i = 0; i < blockSize; i++)
+            {
+                for (int j = 0; j < blockSize; j++)
+                {
+                    var row = blockList[i];
+                    var col = blockList[j];
+
+                    // 블록 내의 의존성 검사
+                    if (analysis.VariableDependencies[row].Contains(col))
+                    {
+                        subJacobian[i, j] = 1.0;  // 의존성이 있는 경우
+                    }
+                }
+            }
+
+            return subJacobian;
         }
     }
 }

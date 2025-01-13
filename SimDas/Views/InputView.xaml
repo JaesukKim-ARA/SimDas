@@ -9,86 +9,19 @@
              xmlns:local="clr-namespace:SimDas.Models.Common"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              MinHeight="400" MaxHeight="1000">
-    
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="2*"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Time Settings -->
-        <Grid Grid.Row="0" Margin="0,0,0,5">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="100"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="100"/>
-            </Grid.ColumnDefinitions>
-
-            <Label Grid.Column="0" 
-                   Content="Start Time:" 
-                   VerticalAlignment="Center"/>
-            <xctk:DoubleUpDown Grid.Column="1"
-                          Minimum="0"
-                          Maximum="{Binding EndTime}"
-                          Value="{Binding StartTime}"
-                          Increment="0.1"
-                          Watermark="0.0"
-                          FormatString="F2"/>
-
-            <Label Grid.Column="2" 
-                   Content="End Time:" 
-                   Margin="10,0,0,0"
-                   VerticalAlignment="Center"/>
-            <xctk:DoubleUpDown Grid.Column="3"
-                          Minimum="{Binding StartTime}"
-                          Maximum="1000000"
-                          Value="{Binding EndTime}"
-                          Increment="0.1"
-                          Watermark="10.0"
-                          FormatString="F2"/>
-        </Grid>
-
-        <!-- Equations -->
-        <Label Grid.Row="1" 
-               Content="Equations (der(x) for derivatives):"
-               FontWeight="Bold"/>
-        <TextBox Grid.Row="2"
-                 Text="{Binding EquationInput, UpdateSourceTrigger=PropertyChanged}"
-                 AcceptsReturn="True"
-                 AcceptsTab="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas"/>
-
-        <!-- Parameters -->
-        <Label Grid.Row="3" 
-               Content="Parameters (name=value; ...):"
-               FontWeight="Bold"/>
-        <TextBox x:Name="ParameterTextBox"
-                 Grid.Row="4"
-                 Text="{Binding ParameterInput, UpdateSourceTrigger=PropertyChanged}"
-                 AcceptsReturn="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas"/>
-
-        <!-- Initial Values -->
-        <Label Grid.Row="5" 
-               Content="Initial Values (name=value; ...):"
-               FontWeight="Bold"/>
-        <TextBox x:Name="InitialValueTextBox"
-                 Grid.Row="6"
-                 Text="{Binding InitialValueInput, UpdateSourceTrigger=PropertyChanged}"
-                 AcceptsReturn="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas"/>
+        <TextBox Grid.Row="0"
+             Text="{Binding ModelInput, UpdateSourceTrigger=PropertyChanged}"
+                 
+             AcceptsReturn="True"
+             AcceptsTab="True"
+             VerticalScrollBarVisibility="Auto"
+             HorizontalScrollBarVisibility="Auto"
+             FontFamily="Consolas" Opacity="0.5"/>
     </Grid>
 </UserControl>

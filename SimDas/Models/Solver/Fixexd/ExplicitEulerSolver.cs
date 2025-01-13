@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
+using System.Linq;
 
 namespace SimDas.Models.Solver.Fixed
 {
@@ -11,11 +12,6 @@ namespace SimDas.Models.Solver.Fixed
     {
         public ExplicitEulerSolver() : base("Explicit Euler")
         {
-        }
-
-        public override void Initialize(Dictionary<string, double> parameters)
-        {
-            base.Initialize(parameters);
         }
 
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
@@ -27,6 +23,7 @@ namespace SimDas.Models.Solver.Fixed
             double dt = (EndTime - StartTime) / Intervals;
             double[] currentState = (double[])InitialState.Clone();
             double[] currentDerivatives = new double[Dimension];
+            double[] nextState = new double[Dimension];
             double currentTime = StartTime;
 
             while (currentTime <= EndTime)
@@ -40,14 +37,28 @@ namespace SimDas.Models.Solver.Fixed
                         throw new OperationCanceledException();
                 }
 
-                double[] residuals = DAESystem(currentTime, currentState, currentDerivatives);
-
+                // 미분 변수 업데이트
+                var residuals = DAESystem(currentTime, currentState, currentDerivatives);
                 for (int i = 0; i < Dimension; i++)
                 {
-                    currentDerivatives[i] -= residuals[i];
-                    currentState[i] += dt * currentDerivatives[i];
+                    if (!_isAlgebraic[i])
+                    {
+                        currentDerivatives[i] -= residuals[i];
+                        nextState[i] = currentState[i] + dt * currentDerivatives[i];
+                    }
+                    else
+                    {
+                        nextState[i] = currentState[i];  // 초기값으로 대수 변수 추정
+                    }
                 }
 
+                // 대수 방정식 해결
+                if (!await SolveAlgebraicEquationsAsync(nextState, currentDerivatives, currentTime + dt, cancellationToken))
+                {
+                    throw new Exception("Failed to solve algebraic equations");
+                }
+
+                Array.Copy(nextState, currentState, Dimension);
                 solution.LogStep(currentTime, currentState, currentDerivatives);
                 currentTime += dt;
 

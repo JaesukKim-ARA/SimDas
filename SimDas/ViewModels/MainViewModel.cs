@@ -82,7 +82,7 @@ namespace SimDas.ViewModels
             InputViewModel = inputViewModel;
             SolverSettingsViewModel = solverSettingsViewModel;
             ResultViewModel = resultViewModel;
-            SampleViewModel = new SampleViewModel(inputViewModel);
+            SampleViewModel = new SampleViewModel(inputViewModel, loggingService);
             LogViewModel = logViewModel;
             _daeAnalyzer = daeAnalyzer;
 
@@ -97,13 +97,6 @@ namespace SimDas.ViewModels
                 if (args.PropertyName == nameof(SolverSettingsViewModel.SelectedSolverType))
                 {
                     ResultViewModel.SolverType = SolverSettingsViewModel.SelectedSolverType;
-                }
-            };
-            InputViewModel.PropertyChanged += (sender, args) =>
-            {
-                if (args.PropertyName == nameof(InputViewModel.SolverType))
-                {
-                    SolverSettingsViewModel.SelectedSolverType = InputViewModel.SolverType;
                 }
             };
         }

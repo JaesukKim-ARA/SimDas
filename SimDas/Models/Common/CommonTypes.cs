@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Text;
 using SimDas.Parser;
+using System.Linq;
 
 namespace SimDas.Models.Common
 {
@@ -72,6 +73,7 @@ namespace SimDas.Models.Common
         public double Time { get; set; }
         public double[] State { get; set; }
         public double[] Derivatives { get; set; }
+        public Dictionary<string, double> Parameters { get; set; }
     }
 
     public class ErrorAnalysis
@@ -185,5 +187,124 @@ namespace SimDas.Models.Common
         public string Stage { get; set; }
         public double Percentage { get; set; }
         public string Message { get; set; }
+    }
+
+    public class Variable
+    {
+        public string Name { get; }
+        public VariableType Type { get; }
+        public int Index { get; set; }
+
+        public Variable(string name, VariableType type)
+        {
+            Name = name;
+            Type = type;
+        }
+    }
+
+    public enum VariableType
+    {
+        Real,
+        Integer,
+        Boolean
+    }
+
+    public class Parameter
+    {
+        public string Name { get; }
+        public double Value { get; }
+
+        public Parameter(string name, double value)
+        {
+            Name = name;
+            Value = value;
+        }
+    }
+
+    public class InitialCondition
+    {
+        public string VariableName { get; }
+        public double Value { get; }
+
+        public InitialCondition(string variableName, double value)
+        {
+            VariableName = variableName;
+            Value = value;
+        }
+    }
+
+    public class Equation
+    {
+        public string Expression { get; }
+        public EquationType Type { get; }
+        public string[] Variables { get; }
+
+        public Equation(string expression, EquationType type, string[] variables)
+        {
+            Expression = expression;
+            Type = type;
+            Variables = variables;
+        }
+    }
+
+    public enum EquationType
+    {
+        Differential,
+        Algebraic
+    }
+
+    public class ParsedModel
+    {
+        public Dictionary<string, Variable> Variables { get; }
+        public Dictionary<string, Parameter> Parameters { get; }
+        public List<InitialCondition> InitialConditions { get; }
+        public List<Equation> Equations { get; }
+        public bool IsValid { get; }
+
+        public ParsedModel()
+        {
+            Variables = new Dictionary<string, Variable>();
+            Parameters = new Dictionary<string, Parameter>();
+            InitialConditions = new List<InitialCondition>();
+            Equations = new List<Equation>();
+            IsValid = false;
+        }
+
+        public ParsedModel(
+            Dictionary<string, Variable> variables,
+            Dictionary<string, Parameter> parameters,
+            List<InitialCondition> initialConditions,
+            List<Equation> equations)
+        {
+            Variables = variables;
+            Parameters = parameters;
+            InitialConditions = initialConditions;
+            Equations = equations;
+            IsValid = ValidateModel();
+        }
+
+        private bool ValidateModel()
+        {
+            // 모든 변수가 초기값을 가지고 있는지 확인
+            foreach (var variable in Variables.Values)
+            {
+                if (!InitialConditions.Any(ic => ic.VariableName == variable.Name))
+                    return false;
+            }
+
+            // 방정식의 수와 변수의 수가 일치하는지 확인
+            if (Equations.Count != Variables.Count)
+                return false;
+
+            return true;
+        }
+
+        public void Clear()
+        {
+            Variables.Clear();
+            Parameters.Clear();
+            InitialConditions.Clear();
+            Equations.Clear();
+        }
     }
 }

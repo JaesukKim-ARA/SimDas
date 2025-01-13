@@ -20,17 +20,18 @@
               SelectedItem="{Binding SelectedLogLevel}" 
               HorizontalAlignment="Left"
               Width="80" 
-              Margin="5" />
+              Margin="5" Opacity="0.5"/>
 
         <!-- 버튼 -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5" Width="Auto">
-            <Button Content="Save Logs" Command="{Binding SaveLogsCommand}" Margin="0, 0, 5, 0"/>
-            <Button Content="Clear Logs" Command="{Binding ClearLogsCommand}" Margin="0, 0, 5, 0"/>
+            <Button Content="Save Logs" Command="{Binding SaveLogsCommand}" Margin="0, 0, 5, 0" Opacity="0.5"/>
+            <Button Content="Clear Logs" Command="{Binding ClearLogsCommand}" Margin="0, 0, 5, 0" Opacity="0.5"/>
         </StackPanel>
 
         <!-- 로그 리스트 -->
         <ListBox x:Name="LogListBox"
                 Grid.Row="1" ItemsSource="{Binding LogEntries}" SelectionMode="Extended" ScrollViewer.ScrollChanged="ScrollViewer_ScrollChanged"
+                 Background="MediumPurple"
                  KeyDown="LogListBox_KeyDown">
             <ListBox.ItemTemplate>
                 <DataTemplate>

@@ -36,6 +36,11 @@ namespace SimDas.ViewModels
         private bool _showTimeIndicator = true;
         private SolverType _solverType;
         private DAEAnalysis _currentAnalysis;
+        private string _structuralAnalysis;
+        private List<BlockInfo> _blockInfos;
+        private bool _hasAlgebraicLoop;
+        private int _differentialCount;
+        private int _algebraicCount;
         private string _systemAnalysis;
         private bool _showAnalysis;
         private double _conditionNumber;
@@ -46,6 +51,10 @@ namespace SimDas.ViewModels
             X = 300, // 초기 X 좌표 (화면 중앙으로 조정)
             Y = 200  // 초기 Y 좌표
         };
+        private double _popupWidth = 500;
+        private double _popupHeight = 600;
+        private bool _isPopupResizing;
+        private Point _lastMousePosition;
 
         public WpfPlot StatesPlotControl { get; set; }
         public WpfPlot DerivativesPlotControl { get; set; }
@@ -134,6 +143,35 @@ namespace SimDas.ViewModels
             get => _systemAnalysis;
             set => SetProperty(ref _systemAnalysis, value);
         }
+        public string StructuralAnalysis
+        {
+            get => _structuralAnalysis;
+            private set => SetProperty(ref _structuralAnalysis, value);
+        }
+
+        public List<BlockInfo> BlockInfos
+        {
+            get => _blockInfos;
+            private set => SetProperty(ref _blockInfos, value);
+        }
+
+        public bool HasAlgebraicLoop
+        {
+            get => _hasAlgebraicLoop;
+            private set => SetProperty(ref _hasAlgebraicLoop, value);
+        }
+
+        public int DifferentialCount
+        {
+            get => _differentialCount;
+            private set => SetProperty(ref _differentialCount, value);
+        }
+
+        public int AlgebraicCount
+        {
+            get => _algebraicCount;
+            private set => SetProperty(ref _algebraicCount, value);
+        }
 
         public bool ShowAnalysis
         {
@@ -167,13 +205,28 @@ namespace SimDas.ViewModels
             set => SetProperty(ref _analysisPopupPosition, value);
         }
 
+        public double PopupWidth
+        {
+            get => _popupWidth;
+            set => SetProperty(ref _popupWidth, Math.Max(400, value));
+        }
+
+        public double PopupHeight
+        {
+            get => _popupHeight;
+            set => SetProperty(ref _popupHeight, Math.Max(300, value));
+        }
+
         public ICommand ExportToCsvCommand { get; }
         public ICommand CopyToClipboardCommand { get; }
         public ICommand SavePlotCommand { get; }
         public ICommand ClearCommand { get; }
         public ICommand CloseAnalysisCommand { get; }
         public ICommand ToggleAnalysisCommand { get; }
-
+        public ICommand StartResizeCommand { get; }
+        public ICommand ResizeCommand { get; }
+        public ICommand EndResizeCommand { get; }
+        public ICommand ExportAnalysisCommand { get; }
 
         public ResultViewModel(
             ILoggingService loggingService,
@@ -195,6 +248,10 @@ namespace SimDas.ViewModels
             ClearCommand = new RelayCommand(ExecuteClear, () => HasResults);
             CloseAnalysisCommand = new RelayCommand(() => ShowAnalysis = false);
             ToggleAnalysisCommand = new RelayCommand(() => ShowAnalysis = !ShowAnalysis);
+            StartResizeCommand = new RelayCommand<Point>(OnStartResize);
+            ResizeCommand = new RelayCommand<Point>(OnResize);
+            EndResizeCommand = new RelayCommand(OnEndResize);
+            ExportAnalysisCommand = new RelayCommand(ExecuteExportAnalysis);
 
             _analysisPopupPosition = new PopupPosition();
 
@@ -213,6 +270,12 @@ namespace SimDas.ViewModels
                     GetValues = index => _currentSolution.Derivatives[index]
                 }
             };
+            PlotStyle plotStyle = new PlotStyle();
+            plotStyle.FigureBackgroundColor = Colors.Purple;
+            foreach (var plot in _plots)
+            {
+                plot.PlotControl.Plot.SetStyle(plotStyle);
+            }
 
             if (Application.Current.MainWindow != null)
             {
@@ -231,44 +294,80 @@ namespace SimDas.ViewModels
             _currentAnalysis = analysis;
 
             var sb = new StringBuilder();
+
+            // 시스템 기본 정보
+            DifferentialCount = analysis.SystemStructure.DifferentialEquations.Count;
+            AlgebraicCount = analysis.SystemStructure.AlgebraicEquations.Count;
+
+            sb.AppendLine($"System Analysis Report");
+            sb.AppendLine("====================");
+            sb.AppendLine($"System Type: {(analysis.SystemStructure.IsFullyCoupled ? "Fully Coupled" : "Partially Decoupled")}");
             sb.AppendLine($"DAE Index: {analysis.Index}");
+            sb.AppendLine($"Differential Variables: {DifferentialCount}");
+            sb.AppendLine($"Algebraic Variables: {AlgebraicCount}");
+            sb.AppendLine();
+
+            // 수치적 특성
+            sb.AppendLine("Numerical Properties:");
+            sb.AppendLine($"System Condition Number: {ConditionNumber:E3}");
+            sb.AppendLine($"Stiffness Ratio: {StiffnessRatio:E3}");
             sb.AppendLine($"Stiff System: {(analysis.IsStiff ? "Yes" : "No")}");
 
-            int algebraicCount = analysis.AlgebraicVariables.Count(x => x);
-            sb.AppendLine($"Algebraic Variables: {algebraicCount}");
-
-            if (analysis.Eigenvalues.Any())
+            // 블록 구조 분석
+            sb.AppendLine("\nBlock Structure:");
+            if (analysis.SystemStructure.SingleEquations.Any())
             {
-                sb.AppendLine("\nEigenvalues:");
-                foreach (var eigenvalue in analysis.Eigenvalues.Take(5))
+                sb.AppendLine($"Decoupled Equations: {analysis.SystemStructure.SingleEquations.Count}");
+            }
+
+            HasAlgebraicLoop = analysis.SystemStructure.HasAlgebraicLoop;
+            if (HasAlgebraicLoop)
+            {
+                sb.AppendLine("\nWarning: System contains algebraic loops");
+            }
+
+            // 블록 정보 생성
+            BlockInfos = new List<BlockInfo>();
+            foreach (var blockAnalysis in analysis.SystemStructure.BlockAnalyses)
+            {
+                var blockInfo = new BlockInfo
                 {
-                    if (Math.Abs(eigenvalue.Imaginary) < 1e-10)
+                    BlockIndex = BlockInfos.Count + 1,
+                    Variables = blockAnalysis.Variables.Select(v => $"var_{v}").ToList(),
+                    ConditionNumber = blockAnalysis.ConditionNumber,
+                    Eigenvalues = blockAnalysis.Eigenvalues
+                        .Select(e => e.Imaginary == 0
+                            ? $"{e.Real:E3}"
+                            : $"{e.Real:E3} ± {Math.Abs(e.Imaginary):E3}i")
+                        .ToList()
+                };
+
+                // 블록 타입 결정
+                bool hasAlgebraic = blockAnalysis.Variables.Any(v => analysis.AlgebraicVariables[v]);
+                bool hasDifferential = blockAnalysis.Variables.Any(v => !analysis.AlgebraicVariables[v]);
+                blockInfo.BlockType = (hasAlgebraic, hasDifferential) switch
+                {
+                    (true, false) => "Algebraic",
+                    (false, true) => "Differential",
+                    (true, true) => "Mixed",
+                    _ => "Unknown"
+                };
+
+                BlockInfos.Add(blockInfo);
+
+                // 블록 정보 추가
+                sb.AppendLine($"\nBlock {blockInfo.BlockIndex} ({blockInfo.BlockType}):");
+                sb.AppendLine($"Variables: {string.Join(", ", blockInfo.Variables)}");
+                sb.AppendLine($"Condition Number: {blockInfo.ConditionNumber:E3}");
+                if (blockInfo.Eigenvalues.Any())
+                {
+                    sb.AppendLine("Eigenvalues:");
+                    foreach (var eigenvalue in blockInfo.Eigenvalues)
                     {
-                        sb.AppendLine($"  {eigenvalue.Real:E3}");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"  {eigenvalue.Real:E3} + {eigenvalue.Imaginary:E3}i");
+                        sb.AppendLine($"  {eigenvalue}");
                     }
                 }
             }
-
-            StiffnessRatio = analysis.StiffnessRatio;
-
-            // Condition Number가 무한대인 경우 처리
-            if (double.IsInfinity(analysis.ConditionNumber))
-            {
-                ConditionNumber = -1; // UI에서 특별히 처리
-            }
-            else
-            {
-                ConditionNumber = analysis.ConditionNumber;
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("Numerical Properties:");
-            sb.AppendLine($"Condition Number: {ConditionNumber:F2}");
-            sb.AppendLine($"Stiffness Ratio: {StiffnessRatio:F2}");
 
             SystemAnalysis = sb.ToString();
             SystemWarnings = new ObservableCollection<string>(analysis.Warnings);
@@ -298,14 +397,15 @@ namespace SimDas.ViewModels
                 MaxTime = timeArray.Last();
                 SelectedTime = MinTime;
 
-                UpdatePlots();
-
                 // 축 그리기
                 StatesPlotControl.Plot.Add.VerticalLine(0, color: Colors.Black);
                 DerivativesPlotControl.Plot.Add.VerticalLine(0, color: Colors.Black);
                 StatesPlotControl.Plot.Add.HorizontalLine(0, color: Colors.Black);
                 DerivativesPlotControl.Plot.Add.HorizontalLine(0, color: Colors.Black);
                 StatesPlotControl.Plot.Axes.NumericTicksBottom();
+                StatesPlotControl.Background = System.Windows.Media.Brushes.Purple;
+
+                UpdatePlots();
 
                 UpdateLogContent();
 
@@ -587,6 +687,85 @@ namespace SimDas.ViewModels
             {
                 _loggingService.Error($"Failed to save plots: {ex.Message}");
                 _dialogService.ShowError($"Failed to save plots: {ex.Message}");
+            }
+        }
+
+        private void OnStartResize(Point mousePosition)
+        {
+            _isPopupResizing = true;
+            _lastMousePosition = mousePosition;
+        }
+
+        private void OnResize(Point currentMousePosition)
+        {
+            if (!_isPopupResizing) return;
+
+            var deltaX = currentMousePosition.X - _lastMousePosition.X;
+            var deltaY = currentMousePosition.Y - _lastMousePosition.Y;
+
+            PopupWidth += deltaX;
+            PopupHeight += deltaY;
+
+            _lastMousePosition = currentMousePosition;
+        }
+
+        private void OnEndResize()
+        {
+            _isPopupResizing = false;
+        }
+
+        private void ExecuteExportAnalysis()
+        {
+            try
+            {
+                var filePath = _dialogService.ShowSaveFileDialog(
+                    ".txt",
+                    "Text files (*.txt)|*.txt|All files (*.*)|*.*");
+
+                if (string.IsNullOrEmpty(filePath)) return;
+
+                var sb = new StringBuilder();
+
+                // 시스템 분석 정보 추가
+                sb.AppendLine(SystemAnalysis);
+                sb.AppendLine();
+
+                // 블록 분석 정보 추가
+                sb.AppendLine("Block Analysis Details");
+                sb.AppendLine("=====================");
+                foreach (var block in BlockInfos)
+                {
+                    sb.AppendLine($"\nBlock {block.BlockIndex} ({block.BlockType})");
+                    sb.AppendLine($"Variables: {string.Join(", ", block.Variables)}");
+                    sb.AppendLine($"Condition Number: {block.ConditionNumber:E3}");
+                    if (block.Eigenvalues.Any())
+                    {
+                        sb.AppendLine("Eigenvalues:");
+                        foreach (var eigenvalue in block.Eigenvalues)
+                        {
+                            sb.AppendLine($"  {eigenvalue}");
+                        }
+                    }
+                }
+
+                // 경고 메시지 추가
+                if (SystemWarnings.Any())
+                {
+                    sb.AppendLine("\nWarnings");
+                    sb.AppendLine("========");
+                    foreach (var warning in SystemWarnings)
+                    {
+                        sb.AppendLine(warning);
+                    }
+                }
+
+                File.WriteAllText(filePath, sb.ToString());
+                _loggingService.Info($"Analysis report exported to {filePath}");
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error($"Failed to export analysis: {ex.Message}");
+                _dialogService.ShowError($"Failed to export analysis: {ex.Message}");
             }
         }
 

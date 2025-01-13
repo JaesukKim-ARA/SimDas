@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
+using System.Linq;
 
 namespace SimDas.Models.Solver.Fixed
 {
@@ -13,7 +14,6 @@ namespace SimDas.Models.Solver.Fixed
         {
         }
 
-        // RungeKutta4Solver.cs 파일 내 SolveAsync 메서드 수정
         public override async Task<Solution> SolveAsync(CancellationToken cancellationToken = default)
         {
             ValidateInputs();
@@ -36,56 +36,35 @@ namespace SimDas.Models.Solver.Fixed
                         throw new OperationCanceledException();
                 }
 
-                // RK4 각 단계의 residual 계산 
-                var k1 = new double[Dimension];
-                var k2 = new double[Dimension];
-                var k3 = new double[Dimension];
-                var k4 = new double[Dimension];
-
-                // k1 계산
-                var residuals = DAESystem(currentTime, currentState, currentDerivatives);
-                for (int i = 0; i < Dimension; i++)
-                {
-                    k1[i] = dt * (currentDerivatives[i] - residuals[i]);
-                }
-
-                // k2 계산
-                var halfState = new double[Dimension];
-                for (int i = 0; i < Dimension; i++)
-                    halfState[i] = currentState[i] + k1[i] / 2;
-                residuals = DAESystem(currentTime + dt / 2, halfState, currentDerivatives);
-                for (int i = 0; i < Dimension; i++)
-                {
-                    k2[i] = dt * (currentDerivatives[i] - residuals[i]);
-                }
-
-                // k3 계산 
-                for (int i = 0; i < Dimension; i++)
-                    halfState[i] = currentState[i] + k2[i] / 2;
-                residuals = DAESystem(currentTime + dt / 2, halfState, currentDerivatives);
-                for (int i = 0; i < Dimension; i++)
-                {
-                    k3[i] = dt * (currentDerivatives[i] - residuals[i]);
-                }
-
-                // k4 계산
-                var endState = new double[Dimension];
-                for (int i = 0; i < Dimension; i++)
-                    endState[i] = currentState[i] + k3[i];
-                residuals = DAESystem(currentTime + dt, endState, currentDerivatives);
-                for (int i = 0; i < Dimension; i++)
-                {
-                    k4[i] = dt * (currentDerivatives[i] - residuals[i]);
-                }
+                // RK4 단계 계산
+                var k1 = await CalculateStageAsync(currentTime, currentState, dt, 0.0, null, cancellationToken);
+                var k2 = await CalculateStageAsync(currentTime + 0.5 * dt, currentState, dt, 0.5, k1, cancellationToken);
+                var k3 = await CalculateStageAsync(currentTime + 0.5 * dt, currentState, dt, 0.5, k2, cancellationToken);
+                var k4 = await CalculateStageAsync(currentTime + dt, currentState, dt, 1.0, k3, cancellationToken);
 
                 // 상태 업데이트
+                var nextState = new double[Dimension];
                 for (int i = 0; i < Dimension; i++)
                 {
-                    double stateIncrement = (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6;
-                    currentState[i] += stateIncrement;
-                    currentDerivatives[i] = stateIncrement / dt;
+                    if (!_isAlgebraic[i])
+                    {
+                        nextState[i] = currentState[i] +
+                            (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) / 6.0;
+                        currentDerivatives[i] = (nextState[i] - currentState[i]) / dt;
+                    }
+                    else
+                    {
+                        nextState[i] = currentState[i];
+                    }
                 }
 
+                // 대수 방정식 해결
+                if (!await SolveAlgebraicEquationsAsync(nextState, currentDerivatives, currentTime + dt, cancellationToken))
+                {
+                    throw new Exception("Failed to solve algebraic equations");
+                }
+
+                Array.Copy(nextState, currentState, Dimension);
                 solution.LogStep(currentTime, currentState, currentDerivatives);
                 currentTime += dt;
 
@@ -96,6 +75,59 @@ namespace SimDas.Models.Solver.Fixed
             }
 
             return solution;
+        }
+
+        private async Task<double[]> CalculateStageAsync(
+            double time,
+            double[] baseState,
+            double dt,
+            double alpha,
+            double[] previousK,
+            CancellationToken cancellationToken)
+        {
+            var stageState = new double[Dimension];
+            var stageDerivatives = new double[Dimension];
+
+            // 스테이지 상태 계산
+            for (int i = 0; i < Dimension; i++)
+            {
+                if (!_isAlgebraic[i])
+                {
+                    stageState[i] = baseState[i];
+                    if (previousK != null)
+                    {
+                        stageState[i] += dt * alpha * previousK[i];
+                    }
+                }
+                else
+                {
+                    stageState[i] = baseState[i];
+                }
+            }
+
+            // 대수 방정식 해결
+            if (!await SolveAlgebraicEquationsAsync(stageState, stageDerivatives, time, cancellationToken))
+            {
+                throw new Exception("Failed to solve algebraic equations in RK stage");
+            }
+
+            // 미분항 계산
+            var k = new double[Dimension];
+            var residuals = DAESystem(time, stageState, stageDerivatives);
+            for (int i = 0; i < Dimension; i++)
+            {
+                if (!_isAlgebraic[i])
+                {
+                    stageDerivatives[i] -= residuals[i];
+                    k[i] = stageDerivatives[i];
+                }
+                else
+                {
+                    k[i] = 0;
+                }
+            }
+
+            return k;
         }
     }
 }

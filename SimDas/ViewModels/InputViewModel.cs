@@ -5,79 +5,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using SimDas.Models.Common;
-using System.Windows.Documents;
-using System.Windows.Media;
-using System.Windows;
-using System.Collections.ObjectModel;
+using SimDas.Models.Parser;
 
 namespace SimDas.ViewModels
 {
     public class InputViewModel : ViewModelBase
     {
         private readonly ILoggingService _loggingService;
-        private readonly EquationParser _equationParser;
-        private string _equationInput = string.Empty;
-        private string _parameterInput = string.Empty;
-        private string _initialValueInput = string.Empty;
-        private SolverType _solverType;
+        private readonly ModelParser _modelParser;
+        private string _modelInput = string.Empty;
+        private ParsedModel _currentModel;
         private double _startTime;
         private double _endTime = 10.0;
         private bool _isValid;
 
         public event EventHandler InputChanged;
 
-        public string EquationInput
+        public string ModelInput
         {
-            get => _equationInput;
-            set
-            {
-                if (SetProperty(ref _equationInput, value))
-                {
-                    InputChanged?.Invoke(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        public SolverType SolverType
-        {
-            get => _solverType;
-            set => SetProperty(ref _solverType, value);
-        }
-
-        public string ParameterInput
-        {
-            get => _parameterInput;
-            set
-            {
-                if (SetProperty(ref _parameterInput, value, ValidateInputs))
-                {
-                    InputChanged?.Invoke(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        public string InitialValueInput
-        {
-            get => _initialValueInput;
-            set
-            {
-                if (SetProperty(ref _initialValueInput, value, ValidateInputs))
-                {
-                    InputChanged?.Invoke(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        public double StartTime
-        {
-            get => _startTime;
-            set => SetProperty(ref _startTime, value, ValidateInputs);
-        }
-
-        public double EndTime
-        {
-            get => _endTime;
-            set => SetProperty(ref _endTime, value, ValidateInputs);
+            get => _modelInput;
+            set => SetProperty(ref _modelInput, value, ValidateInput);
         }
 
         public bool IsValid
@@ -86,206 +33,98 @@ namespace SimDas.ViewModels
             private set => SetProperty(ref _isValid, value);
         }
 
+        public double StartTime
+        {
+            get => _startTime;
+            set => SetProperty(ref _startTime, value, ValidateInput);
+        }
+
+        public double EndTime
+        {
+            get => _endTime;
+            set => SetProperty(ref _endTime, value, ValidateInput);
+        }
+
         public InputViewModel(ILoggingService loggingService)
         {
             _loggingService = loggingService;
-            _equationParser = new EquationParser(_loggingService);
+            _modelParser = new ModelParser(_loggingService);
         }
 
-        private void ValidateInputs()
+        private void ValidateInput()
         {
             try
             {
                 IsValid = false;
-
-                if (EndTime <= StartTime)
-                {
-                    _loggingService.Warning("End time must be greater than start time");
-                    return;
-                }
-
-                var parameters = ParseParameters();
-                if (parameters == null)
-                    return;
-
-                _equationParser.SetParameters(parameters);
-
-                var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(eq => eq.Trim())
-                    .Where(eq => !string.IsNullOrEmpty(eq))
-                    .ToList();
-
-                if (!equations.Any())
-                {
-                    _loggingService.Warning("No equations provided");
-                    return;
-                }
-
-                // 시스템 파싱 시도
-                try
-                {
-                    int dimension;
-                    (_, dimension) = _equationParser.ParseDAE(equations);
-
-                    if (dimension > 0)
-                    {
-                        IsValid = true;
-                        _loggingService.Debug("Input validation successful");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _loggingService.Error($"Equation parsing error: {ex.Message}");
-                    return;
-                }
+                _currentModel = _modelParser.ParseModel(ModelInput);
+                IsValid = _currentModel.IsValid;
             }
             catch (Exception ex)
             {
-                _loggingService.Error($"Validation error: {ex.Message}");
+                _loggingService.Error($"Model validation error: {ex.Message}");
                 IsValid = false;
             }
-        }
-
-        private Dictionary<string, double> ParseParameters()
-        {
-            try
-            {
-                var parameters = new Dictionary<string, double>();
-                var paramPairs = ParameterInput.Split(';')
-                    .Select(s => s.Trim())
-                    .Where(s => !string.IsNullOrEmpty(s));
-
-                foreach (var pair in paramPairs)
-                {
-                    var parts = pair.Split('=');
-                    if (parts.Length != 2)
-                    {
-                        _loggingService.Error($"Invalid parameter format: {pair}");
-                        return null;
-                    }
-
-                    string name = parts[0].Trim();
-                    if (!double.TryParse(parts[1].Trim(), out double value))
-                    {
-                        _loggingService.Error($"Invalid number format in parameter: {pair}");
-                        return null;
-                    }
-
-                    parameters[name] = value;
-                }
-
-                return parameters;
-            }
-            catch (Exception ex)
-            {
-                _loggingService.Error($"Parameter parsing error: {ex.Message}");
-                return null;
-            }
-        }
-
-        public double[] GetInitialState()
-        {
-            try
-            {
-                // 방정식을 기반으로 변수 동기화
-                SyncExpressionParserVariables();
-
-                // 초기 조건 파싱
-                var initialConditions = InitialValueInput
-                    .Split(';')
-                    .Select(s => s.Trim())
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .ToList();
-
-                var parsedInitialConditions = _equationParser.ParseInitialConditions(initialConditions);
-
-                // 방정식에서 사용된 모든 변수가 초기 조건에 포함되었는지 확인
-                var validVariables = _equationParser.GetExpressionParser().GetVariables();
-                foreach (var variable in validVariables.Keys)
-                {
-                    if (!initialConditions.Any(cond => cond.StartsWith($"{variable}=")))
-                    {
-                        throw new Exception($"Missing initial condition for variable: {variable}");
-                    }
-                }
-
-                return parsedInitialConditions;
-            }
-            catch (Exception ex)
-            {
-                _loggingService.Error($"Error parsing initial state: {ex.Message}");
-                throw;
-            }
-        }
-
-        private void SyncExpressionParserVariables()
-        {
-            try
-            {
-                // 방정식에서 변수 추출
-                var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                                             .Select(eq => eq.Trim())
-                                             .Where(eq => !string.IsNullOrEmpty(eq))
-                                             .ToList();
-
-                var variables = new HashSet<string>();
-                foreach (var equation in equations)
-                {
-                    var tokens = _equationParser.GetExpressionParser().Tokenize(equation);
-                    foreach (var token in tokens)
-                    {
-                        if (token.Type == TokenType.Variable)
-                        {
-                            variables.Add(token.Value);
-                        }
-                    }
-                }
-
-                // ExpressionParser의 변수 동기화
-                _equationParser.GetExpressionParser().SetValidVariables(variables.ToList());
-
-                _loggingService.Debug($"ExpressionParser variables synchronized: {string.Join(", ", variables)}");
-            }
-            catch (Exception ex)
-            {
-                _loggingService.Error($"Error syncing variables: {ex.Message}");
-                throw;
-            }
-        }
-
-        public Dictionary<string, double> GetParameters() => ParseParameters();
-
-        public List<string> GetVariableNames() => _equationParser.GetVariableNames();
-
-        public List<string> GetEquations()
-        {
-            var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(eq => eq.Trim())
-                    .Where(eq => !string.IsNullOrEmpty(eq))
-                    .ToList();
-
-            return equations;
         }
 
         public (DAESystem daeSystem, int dimension) ParseEquations()
         {
-            var equations = EquationInput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(eq => eq.Trim())
-                    .Where(eq => !string.IsNullOrEmpty(eq))
-                    .ToList();
+            return _modelParser.CreateDAESystem();
+        }
 
-            return _equationParser.ParseDAE(equations);
+        public double[] GetInitialState()
+        {
+            if (_currentModel == null || !IsValid)
+                throw new InvalidOperationException("No valid model available");
+
+            var initialState = new double[_currentModel.Variables.Count];
+            foreach (var ic in _currentModel.InitialConditions)
+            {
+                var variable = _currentModel.Variables[ic.VariableName];
+                initialState[variable.Index] = ic.Value;
+            }
+
+            _loggingService.Debug($"GetInitialState - InitialState: {string.Join(", ", initialState)}");
+            return initialState;
+        }
+
+        public List<string> GetVariableNames()
+        {
+            var variableNames = _currentModel?.Variables.Values
+                .OrderBy(v => v.Index)
+                .Select(v => v.Name)
+                .ToList() ?? new List<string>();
+
+            _loggingService.Debug($"GetVariableNames - VariableNames: {string.Join(", ", variableNames)}");
+            return variableNames;
+        }
+
+        public Dictionary<string, double> GetParameters()
+        {
+            if (_currentModel == null || !IsValid)
+                throw new InvalidOperationException("No valid model available");
+
+            var parameters = _currentModel.Parameters.ToDictionary(
+                p => p.Key,
+                p => p.Value.Value);
+
+            _loggingService.Debug($"GetParameters - Parameters: {string.Join(", ", parameters.Select(kvp => $"{kvp.Key}={kvp.Value}"))}");
+
+            return parameters;
         }
 
         public void Clear()
         {
-            EquationInput = string.Empty;
-            ParameterInput = string.Empty;
-            InitialValueInput = string.Empty;
-            StartTime = 0;
-            EndTime = 10;
+            ModelInput = string.Empty;
+            if (_currentModel != null)
+            {
+                _currentModel.Clear();
+            }
+            _currentModel = new ParsedModel();  // 새로운 빈 모델로 초기화
             IsValid = false;
-            _equationParser.Reset();
+            _modelParser.Reset();
+
+            // 로깅 추가
+            _loggingService.Debug("InputViewModel cleared and reset");
         }
     }
 }
